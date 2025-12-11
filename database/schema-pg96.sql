@@ -5,6 +5,9 @@
 -- Compatible with: PostgreSQL 9.6+
 -- ============================================================================
 
+-- Enable required extensions for UUID generation (PostgreSQL 9.6)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Drop existing tables if they exist (use with caution in production)
 DROP TABLE IF EXISTS usage_logs CASCADE;
 DROP TABLE IF EXISTS user_sessions CASCADE;

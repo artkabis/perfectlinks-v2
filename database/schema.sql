@@ -4,6 +4,9 @@
 -- Description: Database schema for user management, authentication, and usage tracking
 -- ============================================================================
 
+-- Enable required extensions for UUID generation
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Drop existing tables if they exist (use with caution in production)
 DROP TABLE IF EXISTS usage_logs CASCADE;
 DROP TABLE IF EXISTS user_sessions CASCADE;
@@ -140,13 +143,13 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE PROCEDURE update_updated_at_column();
 
 -- Trigger for user_usage table
 CREATE TRIGGER update_user_usage_updated_at
     BEFORE UPDATE ON user_usage
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE PROCEDURE update_updated_at_column();
 
 -- Function to initialize user usage when a new user is created
 CREATE OR REPLACE FUNCTION initialize_user_usage()
@@ -179,7 +182,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER create_user_usage
     AFTER INSERT ON users
     FOR EACH ROW
-    EXECUTE FUNCTION initialize_user_usage();
+    EXECUTE PROCEDURE initialize_user_usage();
 
 -- Function to update usage limit when plan changes
 CREATE OR REPLACE FUNCTION update_usage_limit_on_plan_change()
@@ -210,7 +213,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_limit_on_plan_change
     AFTER UPDATE ON users
     FOR EACH ROW
-    EXECUTE FUNCTION update_usage_limit_on_plan_change();
+    EXECUTE PROCEDURE update_usage_limit_on_plan_change();
 
 -- Function to clean up expired sessions (call this periodically)
 CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
