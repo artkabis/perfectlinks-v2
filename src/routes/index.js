@@ -92,14 +92,14 @@ router.post(
  * Analyze sitemap and internal links (Main feature)
  */
 router.get(
-  '/sitemap-analysis',
-  authenticate,
-  extractCustomData, // For backward compatibility
-  checkQuota,
-  addQuotaHeaders,
-  incrementUsage,
-  validateUrl,
-  asyncHandler(analysisController.analyzeSitemap)
+  '/sitemap-analysis',
+  authenticate,
+  validateUrl, // <--- DÉPLACÉ ICI !
+  extractCustomData,
+  checkQuota,
+  addQuotaHeaders,
+  incrementUsage,
+  asyncHandler(analysisController.analyzeSitemap)
 );
 
 /**
