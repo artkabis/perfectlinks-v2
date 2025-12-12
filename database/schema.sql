@@ -1,11 +1,18 @@
 -- ============================================================================
--- Perfect Links API - PostgreSQL Database Schema
--- Version: 2.0.0
--- Description: Database schema for user management, authentication, and usage tracking
+-- Perfect Links API - Database Schema
+-- PostgreSQL 9.6+ Compatible (No extensions required)
 -- ============================================================================
-
--- Enable required extensions for UUID generation
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+--
+-- This schema is designed to work with PostgreSQL 9.6+ without requiring
+-- any extensions. UUID values are generated in the application layer.
+--
+-- Tables:
+--   - users: User accounts with authentication
+--   - user_sessions: Active user sessions with tokens
+--   - user_usage: Usage tracking and quota management
+--   - usage_logs: API request logging
+--
+-- ============================================================================
 
 -- Drop existing tables if they exist (use with caution in production)
 DROP TABLE IF EXISTS usage_logs CASCADE;
@@ -29,11 +36,14 @@ CREATE TYPE user_status_type AS ENUM ('pending', 'active', 'suspended', 'deleted
 
 -- ============================================================================
 -- TABLE: users
--- Description: Stores user account information
 -- ============================================================================
+-- Stores user account information
+-- IMPORTANT: The application must provide 'user_id' during INSERT
+-- ============================================================================
+
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    user_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -58,11 +68,14 @@ CREATE INDEX idx_users_validation_token ON users(validation_token);
 
 -- ============================================================================
 -- TABLE: user_sessions
--- Description: Stores active JWT sessions and refresh tokens
 -- ============================================================================
+-- Stores active user sessions with JWT tokens
+-- IMPORTANT: The application must provide 'session_id' during INSERT
+-- ============================================================================
+
 CREATE TABLE user_sessions (
     id SERIAL PRIMARY KEY,
-    session_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+    session_id UUID UNIQUE NOT NULL,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     access_token TEXT NOT NULL,
     refresh_token TEXT,

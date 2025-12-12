@@ -1,5 +1,6 @@
 const { query, transaction } = require('../../config/database');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
 
 class User {
   /**
@@ -10,13 +11,16 @@ class User {
   static async create(userData) {
     const { username, email, passwordHash, plan = 'free', validationToken } = userData;
 
+    // Generate UUID for the user (required for PostgreSQL 9.6 without pgcrypto)
+    const userId = crypto.randomUUID();
+
     const text = `
-      INSERT INTO users (username, email, password_hash, plan, validation_token, validation_token_expires)
-      VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '24 hours')
+      INSERT INTO users (user_id, username, email, password_hash, plan, validation_token, validation_token_expires)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '24 hours')
       RETURNING user_id, username, email, plan, status, created_at
     `;
 
-    const values = [username.toLowerCase(), email.toLowerCase(), passwordHash, plan, validationToken];
+    const values = [userId, username.toLowerCase(), email.toLowerCase(), passwordHash, plan, validationToken];
 
     try {
       const result = await query(text, values);

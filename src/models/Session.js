@@ -1,5 +1,6 @@
 const { query } = require('../../config/database');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
 
 class Session {
   /**
@@ -10,13 +11,16 @@ class Session {
   static async create(sessionData) {
     const { userId, accessToken, refreshToken, ipAddress, userAgent, expiresAt } = sessionData;
 
+    // Generate UUID for the session (required for PostgreSQL 9.6 without pgcrypto)
+    const sessionId = crypto.randomUUID();
+
     const text = `
-      INSERT INTO user_sessions (user_id, access_token, refresh_token, ip_address, user_agent, expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO user_sessions (session_id, user_id, access_token, refresh_token, ip_address, user_agent, expires_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING session_id, user_id, created_at, expires_at
     `;
 
-    const values = [userId, accessToken, refreshToken, ipAddress, userAgent, expiresAt];
+    const values = [sessionId, userId, accessToken, refreshToken, ipAddress, userAgent, expiresAt];
 
     try {
       const result = await query(text, values);
