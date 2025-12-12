@@ -62,6 +62,13 @@ class SitemapService {
    * @returns {Promise<Object>} Analysis result
    */
   static async analyzePageLinks(pageUrl, baseUrl) {
+
+  // Fonction utilitaire pour normaliser le domaine
+  const normalizeHostname = (url) => {
+      const hostname = new URL(url).hostname;
+      // Supprime 'www.' au début du nom d'hôte pour la comparaison
+      return hostname.startsWith('www.') ? hostname.substring(4) : hostname;
+  };
     try {
       const response = await axios.get(pageUrl, {
         timeout: REQUEST_TIMEOUT,
@@ -74,7 +81,8 @@ class SitemapService {
 
       const $ = cheerio.load(response.data);
       const links = [];
-      const baseDomain = new URL(baseUrl).hostname;
+      const baseDomainNormalized = normalizeHostname(baseUrl);
+      //const baseDomain = new URL(baseUrl).hostname;
 
       // Extract all links
       $('a[href]').each((index, element) => {
@@ -89,7 +97,7 @@ class SitemapService {
           const urlObj = new URL(absoluteUrl);
 
           // Only process internal links (same domain)
-          if (urlObj.hostname === baseDomain) {
+          if (normalizeHostname(urlObj.href) === baseDomainNormalized) {
             // Remove hash and trailing slash for consistency
             const cleanUrl = absoluteUrl.split('#')[0].replace(/\/$/, '');
 
