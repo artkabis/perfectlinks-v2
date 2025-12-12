@@ -79,25 +79,43 @@ class SitemapService {
         validateStatus: (status) => status < 500, // Accept 4xx errors
       });
 
+      // Log HTML size for debugging
+      const htmlSize = typeof response.data === 'string' ? response.data.length : Buffer.byteLength(response.data);
+      logger.info(`Fetched ${pageUrl}: ${response.status}, HTML size: ${htmlSize} bytes`);
+
       const $ = cheerio.load(response.data);
       const links = [];
       const baseDomainNormalized = normalizeHostname(baseUrl);
-      //const baseDomain = new URL(baseUrl).hostname;
 
       // Extract all links
+      let totalLinksFound = 0;
+      let internalLinksCount = 0;
+
       $('a[href]').each((index, element) => {
         const href = $(element).attr('href');
         const anchor = $(element).text().trim();
 
         if (!href) return;
 
+        totalLinksFound++;
+
         try {
           // Resolve relative URLs
           const absoluteUrl = new URL(href, pageUrl).href;
-          const urlObj = new URL(absoluteUrl);
+          const linkDomainNormalized = normalizeHostname(absoluteUrl);
+
+          // Debug logging for first few links of first page
+          if (index < 5 && pageUrl.includes(baseDomainNormalized.split('/')[0])) {
+            logger.info(`  Link #${index}: href="${href}"`);
+            logger.info(`    -> Absolute: "${absoluteUrl}"`);
+            logger.info(`    -> Base: "${baseDomainNormalized}" vs Link: "${linkDomainNormalized}"`);
+            logger.info(`    -> Match: ${linkDomainNormalized === baseDomainNormalized}`);
+          }
 
           // Only process internal links (same domain)
-          if (normalizeHostname(urlObj.href) === baseDomainNormalized) {
+          if (linkDomainNormalized === baseDomainNormalized) {
+            internalLinksCount++;
+
             // Remove hash and trailing slash for consistency
             const cleanUrl = absoluteUrl.split('#')[0].replace(/\/$/, '');
 
@@ -109,9 +127,14 @@ class SitemapService {
             });
           }
         } catch (e) {
-          // Ignore invalid URLs
+          // Log first few invalid URLs for debugging
+          if (index < 5) {
+            logger.info(`  Invalid URL: ${href} - ${e.message}`);
+          }
         }
       });
+
+      logger.info(`Page ${pageUrl}: Found ${totalLinksFound} total <a href> tags, ${internalLinksCount} matching internal links`);
 
       return {
         url: pageUrl,
