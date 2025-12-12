@@ -8,6 +8,38 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
+/**
+ * Safe JSON stringify that handles circular references
+ * @param {*} obj - Object to stringify
+ * @param {number} indent - Indentation spaces
+ * @returns {string} - JSON string
+ */
+function safeStringify(obj, indent = 0) {
+  const cache = new Set();
+  return JSON.stringify(
+    obj,
+    (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        // Skip circular references
+        if (cache.has(value)) {
+          return '[Circular]';
+        }
+        cache.add(value);
+      }
+      // Don't log sensitive data
+      if (key === 'password' || key === 'token' || key === 'secret') {
+        return '[REDACTED]';
+      }
+      // Don't log SSL certificates (they cause circular refs)
+      if (key === 'issuerCertificate' || key === 'cert' || key === 'ca') {
+        return '[Certificate]';
+      }
+      return value;
+    },
+    indent
+  );
+}
+
 // Define log format
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -23,7 +55,11 @@ const consoleFormat = winston.format.combine(
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
     let msg = `${timestamp} [${level}]: ${message}`;
     if (Object.keys(meta).length > 0) {
-      msg += ` ${JSON.stringify(meta)}`;
+      try {
+        msg += ` ${safeStringify(meta)}`;
+      } catch (error) {
+        msg += ` [Error stringifying metadata: ${error.message}]`;
+      }
     }
     return msg;
   })

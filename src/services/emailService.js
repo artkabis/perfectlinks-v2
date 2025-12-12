@@ -28,7 +28,7 @@ class EmailService {
     try {
       // Check if email is configured
       if (!emailConfig.auth.user || !emailConfig.auth.pass) {
-        logger.warn('Email service not configured (missing credentials)');
+        logger.warn('Email service not configured (missing credentials). Email features will be disabled.');
         this.isConfigured = false;
         return;
       }
@@ -36,13 +36,21 @@ class EmailService {
       // Create transporter
       this.transporter = nodemailer.createTransport(emailConfig);
 
-      // Verify connection
-      await this.transporter.verify();
+      // Verify connection (with timeout to avoid hanging)
+      await Promise.race([
+        this.transporter.verify(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Email verification timeout')), 5000)
+        )
+      ]);
+
       logger.info('Email service initialized successfully');
       this.isConfigured = true;
     } catch (error) {
-      logger.error('Failed to initialize email service:', error);
+      // Log error message only (not the full error object which may have circular refs)
+      logger.warn(`Email service initialization failed: ${error.message}. Email features will be disabled.`);
       this.isConfigured = false;
+      // Don't throw - email is optional, the API should still work
     }
   }
 
