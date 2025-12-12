@@ -35,26 +35,31 @@
   "author": "Artkabis <contact@artkabis.fr>",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.27.2",
-    "bcryptjs": "^2.4.3",
-    "cheerio": "^1.0.0-rc.12",
-    "cors": "^2.8.5",
-    "crypto-js": "^4.2.0",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.1.5",
-    "helmet": "^7.1.0",
-    "joi": "^17.11.0",
-    "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
-    "nodemailer": "^6.9.7",
-    "pg": "^8.11.3",
-    "uuid": "^9.0.1",
-    "winston": "^3.11.0",
-    "xml2js": "^0.6.2"
+    "axios": "0.27.2",
+    "bcryptjs": "2.4.3",
+    "cheerio": "1.0.0-rc.12",
+    "cors": "2.8.5",
+    "crypto-js": "4.2.0",
+    "dotenv": "16.3.1",
+    "express": "4.18.2",
+    "express-rate-limit": "6.11.2",
+    "helmet": "7.1.0",
+    "joi": "17.11.0",
+    "jsonwebtoken": "9.0.2",
+    "morgan": "1.10.0",
+    "nodemailer": "6.9.7",
+    "pg": "8.11.3",
+    "uuid": "9.0.1",
+    "winston": "3.11.0",
+    "xml2js": "0.6.2"
   },
   "overrides": {
-    "undici": "4.15.0"
+    "undici": "4.15.0",
+    "cheerio": "1.0.0-rc.12",
+    "color": "4.2.3",
+    "color-string": "1.9.1",
+    "whatwg-encoding": "2.0.0",
+    "whatwg-mimetype": "3.0.0"
   },
   "devDependencies": {
     "eslint": "^8.55.0",
@@ -66,8 +71,8 @@
     "supertest": "^6.3.3"
   },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=6.0.0"
+    "node": "16.x",
+    "npm": ">=8.0.0"
   },
   "jest": {
     "testEnvironment": "node",
