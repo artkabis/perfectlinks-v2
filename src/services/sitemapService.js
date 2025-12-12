@@ -72,16 +72,23 @@ class SitemapService {
     try {
       const response = await axios.get(pageUrl, {
         timeout: REQUEST_TIMEOUT,
+        responseType: 'text', // Force text response (not JSON)
         headers: {
           'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+          'Accept-Encoding': 'gzip, deflate',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
         },
         maxRedirects: 5,
         validateStatus: (status) => status < 500, // Accept 4xx errors
       });
 
-      // Log HTML size for debugging
-      const htmlSize = typeof response.data === 'string' ? response.data.length : Buffer.byteLength(response.data);
-      logger.info(`Fetched ${pageUrl}: ${response.status}, HTML size: ${htmlSize} bytes`);
+      // Log response info for debugging
+      const contentType = response.headers['content-type'] || 'unknown';
+      const htmlSize = typeof response.data === 'string' ? response.data.length : JSON.stringify(response.data).length;
+      logger.info(`Fetched ${pageUrl}: ${response.status}, Content-Type: ${contentType}, Size: ${htmlSize} bytes`);
 
       const $ = cheerio.load(response.data);
       const links = [];
