@@ -111,12 +111,12 @@ async function diagnose() {
     const currentUser = currentUserResult.rows[0].current_user;
     const dbUser = process.env.DB_USER;
 
-    if (currentUser !== dbUser.toLowerCase()) {
-      console.log(`\n⚠️  WARNING: Case mismatch detected!`);
+    // Only show warning if the names don't match
+    if (currentUser !== dbUser) {
+      console.log(`\n⚠️  WARNING: User name mismatch detected!`);
       console.log(`   .env DB_USER: ${dbUser}`);
       console.log(`   Actual user:  ${currentUser}`);
-      console.log(`\n   PostgreSQL converts unquoted identifiers to lowercase.`);
-      console.log(`   Update your .env file to use: ${currentUser}`);
+      console.log(`\n   Update your .env file to use: DB_USER=${currentUser}`);
     }
 
     if (tablesResult.rows.length > 0) {

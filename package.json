@@ -12,6 +12,7 @@
     "db:reset": "node scripts/reset-database.js",
     "db:grant": "node scripts/grant-permissions.js",
     "db:diagnose": "node scripts/diagnose-db-user.js",
+    "db:fix-owner": "node scripts/change-table-owner.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint .",
