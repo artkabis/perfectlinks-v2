@@ -13,9 +13,10 @@
     "db:grant": "node scripts/grant-permissions.js",
     "db:diagnose": "node scripts/diagnose-db-user.js",
     "db:fix-owner": "node scripts/change-table-owner.js",
-    "test": "jest --coverage",
-    "test:watch": "jest --watch",
-    "test:integration": "jest tests/api.integration.test.js",
+    "test": "jest --runInBand --maxWorkers=1 --forceExit",
+    "test:coverage": "jest --runInBand --maxWorkers=1 --coverage --forceExit",
+    "test:watch": "jest --watch --maxWorkers=1",
+    "test:integration": "jest tests/api.integration.test.js --runInBand --maxWorkers=1 --forceExit",
     "test:api": "./test-api.sh",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -70,11 +71,17 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "maxWorkers": 1,
+    "maxConcurrency": 1,
+    "bail": false,
+    "detectOpenHandles": false,
+    "forceExit": true,
     "coveragePathIgnorePatterns": [
       "/node_modules/"
     ],
     "testMatch": [
       "**/tests/**/*.test.js"
-    ]
+    ],
+    "testTimeout": 30000
   }
 }
