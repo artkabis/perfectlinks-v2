@@ -10,6 +10,7 @@
     "migrate:check": "node scripts/check-migration.js",
     "db:setup": "node scripts/setup-database.js",
     "db:reset": "node scripts/reset-database.js",
+    "db:grant": "node scripts/grant-permissions.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint .",
