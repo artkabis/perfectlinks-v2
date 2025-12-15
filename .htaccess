@@ -1,0 +1,122 @@
+# =========================================================================
+# Perfect Links - Configuration Apache
+# Reverse Proxy pour Node.js + Frontend SPA
+# =========================================================================
+
+# Activer le moteur de réécriture
+RewriteEngine On
+
+# =========================================================================
+# SECTION 1 : REVERSE PROXY VERS NODE.JS (API)
+# =========================================================================
+
+# Rediriger toutes les requêtes /api/* vers Node.js sur localhost:9090
+RewriteCond %{REQUEST_URI} ^/api
+RewriteRule ^(.*)$ http://localhost:9090/$1 [P,L]
+
+# Configuration du proxy (si mod_proxy est disponible)
+<IfModule mod_proxy.c>
+    ProxyPreserveHost On
+    ProxyPass /api http://localhost:9090/api
+    ProxyPassReverse /api http://localhost:9090/api
+
+    # Timeout pour les analyses longues
+    ProxyTimeout 120
+</IfModule>
+
+# =========================================================================
+# SECTION 2 : HEADERS HTTP
+# =========================================================================
+
+<IfModule mod_headers.c>
+    # CORS - Autoriser les requêtes depuis le même domaine
+    Header always set Access-Control-Allow-Origin "https://perfectlinksv2.artkabis.fr"
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept"
+
+    # Répondre aux requêtes OPTIONS (preflight CORS)
+    <If "%{REQUEST_METHOD} == 'OPTIONS'">
+        Header always set Access-Control-Max-Age "3600"
+        Header always set Content-Length "0"
+        Header always set Content-Type "text/plain"
+    </If>
+</IfModule>
+
+# =========================================================================
+# SECTION 3 : FRONTEND SPA ROUTING
+# =========================================================================
+
+# Servir les fichiers statiques s'ils existent
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Ne pas intercepter les routes API
+RewriteCond %{REQUEST_URI} !^/api
+
+# Rediriger toutes les autres routes vers index.html (SPA routing)
+RewriteRule ^ /index.html [L]
+
+# =========================================================================
+# SECTION 4 : GESTION DES REQUÊTES OPTIONS
+# =========================================================================
+
+# Gérer les requêtes OPTIONS pour CORS preflight
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# =========================================================================
+# SECTION 5 : OPTIMISATION & CACHE
+# =========================================================================
+
+# Cache des assets statiques
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Assets avec hash (cache longue durée)
+    <FilesMatch "\.(css|js|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot)$">
+        ExpiresDefault "access plus 1 year"
+        Header set Cache-Control "public, immutable"
+    </FilesMatch>
+
+    # HTML (pas de cache pour le SPA)
+    <FilesMatch "\.(html)$">
+        ExpiresDefault "access plus 0 seconds"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+</IfModule>
+
+# Compression Gzip
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript application/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/xml application/xhtml+xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# =========================================================================
+# SECTION 6 : SÉCURITÉ
+# =========================================================================
+
+# Empêcher l'affichage du listing des répertoires
+Options -Indexes
+
+# Protection des fichiers sensibles
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "(package\.json|\.env|\.git)">
+    Require all denied
+</FilesMatch>
+
+# Protection XSS
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
