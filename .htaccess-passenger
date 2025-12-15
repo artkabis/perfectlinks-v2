@@ -1,0 +1,125 @@
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/nigr8844/perfectlinksv2.artkabis.fr"
+PassengerBaseURI "/"
+PassengerNodejs "/home/nigr8844/nodevenv/perfectlinksv2.artkabis.fr/16/bin/node"
+PassengerAppType node
+PassengerStartupFile server.js
+PassengerEnabled on
+PassengerAppEnv production
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
+<IfModule Litespeed>
+SetEnv CORS_ORIGIN "https://perfectlinksv2.artkabis.fr,https://perfectlinks.artkabis.fr,http://localhost:8080,http://127.0.0.1:5500"
+SetEnv DB_HOST localhost
+SetEnv DB_NAME nigr8844_perfectlinks_v2
+SetEnv DB_USER nigr8844_perfectlinks_v2
+SetEnv DB_PASSWORD votre_mot_de_passe_db
+SetEnv DB_PORT 5432
+SetEnv NODE_ENV production
+SetEnv PORT 9090
+SetEnv JWT_SECRET votre_jwt_secret_production
+SetEnv JWT_REFRESH_SECRET votre_jwt_refresh_secret_production
+SetEnv JWT_EXPIRES_IN 1h
+SetEnv JWT_REFRESH_EXPIRES_IN 7d
+SetEnv MAILSENDER_USERNAME votre_email@domaine.com
+SetEnv MAILSENDER_HOST smtp.votreserveur.com
+SetEnv MAILSENDER_PORT 587
+SetEnv MAILSENDER_PASSWORD votre_mot_de_passe_email
+SetEnv MAILSENDER_FROM "Perfect Links <noreply@perfectlinksv2.artkabis.fr>"
+SetEnv EMAIL_VALIDATION_URL https://perfectlinksv2.artkabis.fr/api/validate-account
+SetEnv RATE_LIMIT_WINDOW_MS 900000
+SetEnv RATE_LIMIT_MAX_REQUESTS 100
+SetEnv LOG_LEVEL info
+SetEnv MAX_CONCURRENT_REQUESTS 5
+SetEnv REQUEST_TIMEOUT 10000
+SetEnv USER_AGENT "PerfectLinks Bot/2.0 (+https://perfectlinksv2.artkabis.fr)"
+SetEnv FREE_PLAN 100
+SetEnv PREMIUM_PLAN 500
+SetEnv PRO_PLAN 1000
+</IfModule>
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION END
+
+# =========================================================================
+# PERFECT LINKS - CUSTOM CONFIGURATION
+# =========================================================================
+
+# Activer le RewriteEngine
+RewriteEngine On
+
+# =========================================================================
+# SECTION 1 : FRONTEND SPA ROUTING
+# =========================================================================
+
+# Servir les fichiers statiques s'ils existent (CSS, JS, images, etc.)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Ne pas intercepter les routes API (Passenger gère déjà Node.js)
+RewriteCond %{REQUEST_URI} !^/api
+
+# Rediriger toutes les autres routes vers index.html pour le SPA
+RewriteRule ^ /index.html [L]
+
+# =========================================================================
+# SECTION 2 : HEADERS HTTP
+# =========================================================================
+
+<IfModule mod_headers.c>
+    # CORS Headers (en complément de la config Express)
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+
+    # Sécurité
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# =========================================================================
+# SECTION 3 : OPTIMISATION & CACHE
+# =========================================================================
+
+# Cache des assets statiques
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Assets avec hash (cache longue durée)
+    <FilesMatch "\.(css|js|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot)$">
+        ExpiresDefault "access plus 1 year"
+        Header set Cache-Control "public, immutable"
+    </FilesMatch>
+
+    # HTML (pas de cache pour le SPA)
+    <FilesMatch "\.(html)$">
+        ExpiresDefault "access plus 0 seconds"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+# Compression Gzip
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE text/javascript application/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# =========================================================================
+# SECTION 4 : SÉCURITÉ
+# =========================================================================
+
+# Empêcher l'affichage du listing des répertoires
+Options -Indexes
+
+# Protection des fichiers sensibles
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "(package\.json|package-lock\.json|\.env|\.git|node_modules)">
+    Require all denied
+</FilesMatch>
