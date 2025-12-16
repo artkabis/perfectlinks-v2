@@ -99,6 +99,30 @@ app.use(errorHandler);
 // ============================================================================
 
 /**
+ * Get the base URL for the server based on environment
+ * @returns {string} Base URL for the server
+ */
+function getServerBaseUrl() {
+  // Use APP_URL if explicitly set
+  if (process.env.APP_URL) {
+    return process.env.APP_URL;
+  }
+
+  // In production, try to extract from CORS_ORIGIN
+  if (NODE_ENV === 'production' && process.env.CORS_ORIGIN) {
+    const origins = process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+    // Use the first non-wildcard origin
+    const productionOrigin = origins.find((origin) => origin !== '*' && origin.startsWith('http'));
+    if (productionOrigin) {
+      return productionOrigin;
+    }
+  }
+
+  // Default to localhost
+  return `http://localhost:${PORT}`;
+}
+
+/**
  * Initialize services and start server
  */
 async function startServer() {
@@ -126,13 +150,16 @@ async function startServer() {
     logger.info('Starting scheduled jobs...');
     startScheduledJobs();
 
+    // Get dynamic server URL
+    const serverUrl = getServerBaseUrl();
+
     // Start server
     const server = app.listen(PORT, () => {
       logger.info(`🚀 Perfect Links API v2.0 started successfully`);
       logger.info(`📍 Environment: ${NODE_ENV}`);
       logger.info(`🌐 Server running on port ${PORT}`);
-      logger.info(`📊 API endpoints available at http://localhost:${PORT}/api`);
-      logger.info(`💚 Health check: http://localhost:${PORT}/api/health`);
+      logger.info(`📊 API endpoints available at ${serverUrl}/api`);
+      logger.info(`💚 Health check: ${serverUrl}/api/health`);
     });
 
     // Graceful shutdown handlers
