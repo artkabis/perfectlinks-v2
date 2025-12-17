@@ -2,19 +2,11 @@
 PassengerEnabled off
 
 # Reverse proxy vers l'application Node.js sur localhost:9090
+# Les headers CORS sont gérés par l'application Node.js (voir server.js)
 RewriteEngine On
 RewriteCond %{HTTPS} on
 RewriteCond %{REQUEST_URI} !^/\.well-known/
 RewriteRule ^(.*)$ http://127.0.0.1:9090/$1 [P,L]
-
-# CORS Headers
-<IfModule mod_headers.c>
-    Header always set Access-Control-Allow-Origin "https://app.perfectlinksv2.artkabis.fr"
-    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, PATCH, DELETE"
-    Header always set Access-Control-Allow-Headers "Content-Type, x-custom-data, X-Requested-With, Authorization"
-    Header always set Access-Control-Allow-Credentials "true"
-    Header always set Access-Control-Max-Age "86400"
-</IfModule>
 
 # Protection fichiers sensibles
 Options -Indexes
