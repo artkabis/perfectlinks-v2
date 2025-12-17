@@ -16,12 +16,6 @@ PassengerAppLogFile /home/nigr8844/perfectlinksv2.log
 # Memory and process limits
 PassengerMaxPoolSize 2
 PassengerMinInstances 1
-PassengerMaxInstancesPerApp 2
-PassengerMaxRequests 1000
-
-# Enable better error reporting
-PassengerBufferResponse off
-PassengerResponseBufferHighWatermark 0
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
 
 # CORS Headers
@@ -31,9 +25,6 @@ PassengerResponseBufferHighWatermark 0
     Header always set Access-Control-Allow-Headers "Content-Type, x-custom-data, X-Requested-With, Authorization"
     Header always set Access-Control-Allow-Credentials "true"
     Header always set Access-Control-Max-Age "86400"
-
-    # Force HTML response for better error visibility
-    Header always set Content-Type "text/html; charset=utf-8" "expr=%{CONTENT_TYPE} =~ m#^$#"
 </IfModule>
 
 # Protection fichiers sensibles
