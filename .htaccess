@@ -1,22 +1,11 @@
-# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
-PassengerEnabled on
-PassengerFriendlyErrorPages on
-PassengerAppRoot /home/nigr8844/perfectlinksv2.artkabis.fr
-PassengerStartupFile server.js
-PassengerAppType node
-PassengerNodejs /home/nigr8844/nodevenv/perfectlinksv2.artkabis.fr/16/bin/node
-PassengerAppEnv production
+# Passenger désactivé - Gestion manuelle avec PM2
+PassengerEnabled off
 
-# Increase startup timeout from 90s to 300s (5 minutes)
-PassengerStartTimeout 300
-
-# Application logging
-PassengerAppLogFile /home/nigr8844/perfectlinksv2.log
-
-# Memory and process limits
-PassengerMaxPoolSize 2
-PassengerMinInstances 1
-# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+# Reverse proxy vers l'application Node.js sur localhost:9090
+RewriteEngine On
+RewriteCond %{HTTPS} on
+RewriteCond %{REQUEST_URI} !^/\.well-known/
+RewriteRule ^(.*)$ http://127.0.0.1:9090/$1 [P,L]
 
 # CORS Headers
 <IfModule mod_headers.c>
