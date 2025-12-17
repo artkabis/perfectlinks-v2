@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfect Links v2 - Analyse de Sitemap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #48bb78;
+            --danger: #f56565;
+            --warning: #ed8936;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+
+        /* Login Container */
+        .login-container {
+            max-width: 420px;
+            margin: 80px auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        /* App Container */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: var(--gray-800);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+
+        .plan-badge {
+            padding: 4px 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Main Content */
+        .main-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--gray-700);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="url"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--gray-300);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 2px solid var(--gray-200);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--gray-600);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+            background: var(--gray-50);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .card-url {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .card-url:hover {
+            text-decoration: underline;
+        }
+
+        /* Links List */
+        .links-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--gray-50);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--gray-700);
+        }
+
+        .link-item a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .link-item a:hover {
+            text-decoration: underline;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--gray-600);
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-600);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Orphan Page Alert */
+        .orphan-alert {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .orphan-icon {
+            font-size: 24px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- Login View -->
+        <div v-if="!isAuthenticated" class="login-container">
+            <h1 style="font-size: 28px; color: #333; margin-bottom: 10px; text-align: center;">Perfect Links v2</h1>
+            <p style="text-align: center; color: #666; margin-bottom: 30px; font-size: 14px;">Analysez votre maillage interne</p>
+
+            <div v-if="message" :class="'alert alert-' + messageType">{{ message }}</div>
+
+            <form @submit.prevent="login">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        v-model="credentials.email"
+                        placeholder="votre@email.com"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input
+                        type="password"
+                        id="password"
+                        v-model="credentials.password"
+                        placeholder="••••••••"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary" :disabled="loading" style="width: 100%;">
+                    <span v-if="loading" class="loading"></span>
+                    {{ loading ? 'Connexion...' : 'Se connecter' }}
+                </button>
+            </form>
+        </div>
+
+        <!-- App View -->
+        <div v-else class="app-container">
+            <!-- Header -->
+            <div class="header">
+                <h1>🔗 Perfect Links v2</h1>
+                <div class="user-info">
+                    <div class="user-badge">
+                        <span>👤 {{ user.username }}</span>
+                        <span class="plan-badge">{{ user.plan }}</span>
+                    </div>
+                    <button @click="logout" class="btn btn-secondary">
+                        Déconnexion
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Analysis Form -->
+                <div v-if="!analysisResult">
+                    <h2 style="font-size: 20px; margin-bottom: 20px; color: var(--gray-800);">
+                        Analyser un sitemap
+                    </h2>
+
+                    <div v-if="message" :class="'alert alert-' + messageType">{{ message }}</div>
+
+                    <form @submit.prevent="analyzeSitemap">
+                        <div class="form-group">
+                            <label for="sitemapUrl">URL du sitemap</label>
+                            <input
+                                type="url"
+                                id="sitemapUrl"
+                                v-model="sitemapUrl"
+                                placeholder="https://example.com/sitemap.xml"
+                                required
+                            >
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" :disabled="loading">
+                            <span v-if="loading" class="loading"></span>
+                            {{ loading ? 'Analyse en cours...' : '🔍 Analyser' }}
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Analysis Results -->
+                <div v-else>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h2 style="font-size: 20px; color: var(--gray-800);">
+                            Résultats de l'analyse
+                        </h2>
+                        <button @click="resetAnalysis" class="btn btn-secondary">
+                            ← Nouvelle analyse
+                        </button>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">{{ stats.totalPages }}</div>
+                            <div class="stat-label">Pages totales</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ stats.totalLinks }}</div>
+                            <div class="stat-label">Liens internes</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: var(--warning);">{{ stats.orphanPages }}</div>
+                            <div class="stat-label">Pages orphelines</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: var(--success);">{{ stats.linkedPages }}</div>
+                            <div class="stat-label">Pages liées</div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="tabs">
+                        <button
+                            class="tab"
+                            :class="{ active: activeTab === 'pages' }"
+                            @click="activeTab = 'pages'"
+                        >
+                            📄 Toutes les pages ({{ analysisResult.pages?.length || 0 }})
+                        </button>
+                        <button
+                            class="tab"
+                            :class="{ active: activeTab === 'orphans' }"
+                            @click="activeTab = 'orphans'"
+                        >
+                            ⚠️ Pages orphelines ({{ orphanPages.length }})
+                        </button>
+                    </div>
+
+                    <!-- Pages Tab -->
+                    <div v-if="activeTab === 'pages'">
+                        <div v-for="page in analysisResult.pages" :key="page.url" class="card">
+                            <div class="card-header">
+                                <a :href="page.url" target="_blank" class="card-url">
+                                    {{ page.url }}
+                                </a>
+                                <span v-if="page.internalLinks?.length === 0" class="badge badge-warning">
+                                    Aucun lien sortant
+                                </span>
+                                <span v-else class="badge badge-success">
+                                    {{ page.internalLinks?.length || 0 }} lien(s)
+                                </span>
+                            </div>
+
+                            <div v-if="page.internalLinks && page.internalLinks.length > 0">
+                                <div style="font-size: 13px; color: var(--gray-600); margin-bottom: 8px; font-weight: 500;">
+                                    Liens internes trouvés :
+                                </div>
+                                <div class="links-list">
+                                    <div v-for="(link, index) in page.internalLinks" :key="index" class="link-item">
+                                        <span>→</span>
+                                        <a :href="link" target="_blank">{{ link }}</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else style="color: var(--gray-500); font-size: 13px; font-style: italic;">
+                                Aucun lien interne trouvé sur cette page
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Orphans Tab -->
+                    <div v-if="activeTab === 'orphans'">
+                        <div v-if="orphanPages.length > 0" class="orphan-alert">
+                            <span class="orphan-icon">⚠️</span>
+                            <div>
+                                <strong>{{ orphanPages.length }} page(s) orpheline(s) détectée(s)</strong>
+                                <p style="margin-top: 4px; font-size: 13px;">
+                                    Ces pages n'ont aucun lien interne pointant vers elles depuis d'autres pages du site.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div v-if="orphanPages.length > 0">
+                            <div v-for="page in orphanPages" :key="page.url" class="card">
+                                <div class="card-header">
+                                    <a :href="page.url" target="_blank" class="card-url">
+                                        {{ page.url }}
+                                    </a>
+                                    <span class="badge badge-danger">
+                                        Orpheline
+                                    </span>
+                                </div>
+                                <div style="color: var(--gray-600); font-size: 13px; margin-top: 8px;">
+                                    Cette page n'est référencée par aucune autre page du site.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-else class="empty-state">
+                            <div class="empty-state-icon">✅</div>
+                            <h3 style="margin-bottom: 8px; color: var(--gray-700);">Aucune page orpheline !</h3>
+                            <p>Toutes les pages de votre site sont correctement liées.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createApp } from 'https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.es.js';
+
+        const API_URL = 'https://perfectlinksv2.artkabis.fr/api';
+
+        createApp({
+            // Auth State
+            isAuthenticated: false,
+            user: null,
+            credentials: {
+                email: '',
+                password: ''
+            },
+
+            // UI State
+            loading: false,
+            message: '',
+            messageType: 'error',
+
+            // Analysis State
+            sitemapUrl: '',
+            analysisResult: null,
+            activeTab: 'pages',
+
+            // Computed
+            get stats() {
+                if (!this.analysisResult?.pages) return { totalPages: 0, totalLinks: 0, orphanPages: 0, linkedPages: 0 };
+
+                const pages = this.analysisResult.pages;
+                const totalPages = pages.length;
+                const totalLinks = pages.reduce((sum, page) => sum + (page.internalLinks?.length || 0), 0);
+                const orphanPages = this.orphanPages.length;
+                const linkedPages = totalPages - orphanPages;
+
+                return { totalPages, totalLinks, orphanPages, linkedPages };
+            },
+
+            get orphanPages() {
+                if (!this.analysisResult?.pages) return [];
+
+                const pages = this.analysisResult.pages;
+                const allLinks = new Set();
+
+                // Collect all internal links from all pages
+                pages.forEach(page => {
+                    if (page.internalLinks) {
+                        page.internalLinks.forEach(link => allLinks.add(link));
+                    }
+                });
+
+                // Find pages that are not referenced by any other page
+                return pages.filter(page => !allLinks.has(page.url));
+            },
+
+            // Methods
+            async login() {
+                this.loading = true;
+                this.message = '';
+
+                try {
+                    const response = await fetch(`${API_URL}/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(this.credentials)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        localStorage.setItem('accessToken', data.accessToken);
+                        localStorage.setItem('refreshToken', data.refreshToken);
+                        this.user = data.user;
+                        this.isAuthenticated = true;
+                        console.log('✅ Connexion réussie', data);
+                    } else {
+                        this.message = data.message || 'Identifiants incorrects';
+                        this.messageType = 'error';
+                    }
+                } catch (error) {
+                    console.error('Erreur de connexion:', error);
+                    this.message = 'Erreur de connexion au serveur';
+                    this.messageType = 'error';
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            logout() {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                this.isAuthenticated = false;
+                this.user = null;
+                this.analysisResult = null;
+                this.credentials = { email: '', password: '' };
+                console.log('👋 Déconnexion');
+            },
+
+            async analyzeSitemap() {
+                this.loading = true;
+                this.message = '';
+
+                try {
+                    const token = localStorage.getItem('accessToken');
+
+                    const response = await fetch(`${API_URL}/links/analyze`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ sitemapUrl: this.sitemapUrl })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        this.analysisResult = data;
+                        console.log('✅ Analyse terminée', data);
+                    } else {
+                        this.message = data.message || 'Erreur lors de l\'analyse';
+                        this.messageType = 'error';
+                    }
+                } catch (error) {
+                    console.error('Erreur d\'analyse:', error);
+                    this.message = 'Erreur lors de l\'analyse du sitemap';
+                    this.messageType = 'error';
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            resetAnalysis() {
+                this.analysisResult = null;
+                this.sitemapUrl = '';
+                this.activeTab = 'pages';
+                this.message = '';
+            },
+
+            // Init
+            mounted() {
+                // Check if already authenticated
+                const token = localStorage.getItem('accessToken');
+                if (token) {
+                    // TODO: Verify token with backend
+                    console.log('🔑 Token trouvé, tentative de reconnexion...');
+                }
+                console.log('✨ Perfect Links v2 chargée');
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
