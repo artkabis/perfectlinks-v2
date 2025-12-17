@@ -1,0 +1,6 @@
+PassengerEnabled on
+PassengerFriendlyErrorPages on
+PassengerAppRoot /home/nigr8844/perfectlinksv2.artkabis.fr
+PassengerStartupFile server.js
+PassengerAppType node
+PassengerNodejs /home/nigr8844/nodevenv/perfectlinksv2.artkabis.fr/16/bin/node
