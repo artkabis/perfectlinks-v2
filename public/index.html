@@ -730,12 +730,12 @@
                 <form @submit.prevent="login">
                     <div class="form-group">
                         <label>Email</label>
-                        <input type="email" v-model="email" placeholder="votre@email.com" required>
+                        <input type="email" v-model="credentials.email" placeholder="votre@email.com" required>
                     </div>
 
                     <div class="form-group">
                         <label>Mot de passe</label>
-                        <input type="password" v-model="password" placeholder="••••••••" required>
+                        <input type="password" v-model="credentials.password" placeholder="••••••••" required>
                     </div>
 
                     <button type="submit" class="btn" :disabled="loading">
@@ -1309,14 +1309,15 @@
     <script type="module">
         import { createApp } from 'petite-vue'
 
+        const API_URL = 'https://perfectlinksv2.artkabis.fr/api';
+
         createApp({
             // Auth
             isLoggedIn: false,
-            email: '',
-            password: '',
+            credentials: { email: '', password: '' },
+            user: null,
             error: '',
             loading: false,
-            token: null,
 
             // Analysis
             sitemapUrl: 'https://artkabis.fr/sitemap.xml',
@@ -1332,10 +1333,10 @@
 
             mounted() {
                 // Check if already logged in
-                const storedToken = localStorage.getItem('token')
+                const storedToken = localStorage.getItem('accessToken')
                 if (storedToken) {
-                    this.token = storedToken
                     this.isLoggedIn = true
+                    // Optionally fetch user info here
                 }
             },
 
@@ -1344,22 +1345,21 @@
                 this.error = ''
 
                 try {
-                    const response = await fetch('/api/login', {
+                    const response = await fetch(`${API_URL}/login`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            email: this.email,
-                            password: this.password,
-                        }),
+                        credentials: 'include',
+                        body: JSON.stringify(this.credentials),
                     })
 
                     const data = await response.json()
 
                     if (response.ok) {
-                        this.token = data.token
-                        localStorage.setItem('token', data.token)
+                        localStorage.setItem('accessToken', data.accessToken)
+                        localStorage.setItem('refreshToken', data.refreshToken)
+                        this.user = data.user
                         this.isLoggedIn = true
                     } else {
                         this.error = data.message || 'Erreur de connexion'
@@ -1373,31 +1373,34 @@
 
             logout() {
                 this.isLoggedIn = false
-                this.token = null
+                this.user = null
                 this.analysisResult = null
-                localStorage.removeItem('token')
+                localStorage.removeItem('accessToken')
+                localStorage.removeItem('refreshToken')
             },
 
             async analyzeSitemap() {
                 this.analyzing = true
 
                 try {
-                    const response = await fetch('/api/analyze', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${this.token}`,
-                        },
-                        body: JSON.stringify({
-                            sitemapUrl: this.sitemapUrl,
-                        }),
-                    })
+                    const token = localStorage.getItem('accessToken')
+                    const response = await fetch(
+                        `${API_URL}/sitemap-analysis?url=${encodeURIComponent(this.sitemapUrl)}`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                            },
+                            credentials: 'include',
+                        }
+                    )
 
                     const data = await response.json()
 
                     if (response.ok) {
-                        this.analysisResult = data
-                        console.log('Analysis result:', data)
+                        // Handle both array and object responses
+                        this.analysisResult = Array.isArray(data) ? data[0] : data
+                        console.log('Analysis result:', this.analysisResult)
 
                         // Create depth chart after data is loaded
                         this.$nextTick(() => {
