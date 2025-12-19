@@ -3,6 +3,12 @@ const xml2js = require('xml2js');
 const cheerio = require('cheerio');
 const logger = require('../utils/logger');
 
+// SEO Analyzers
+const OnPageAnalyzer = require('./seo/onPageAnalyzer');
+const ContentAnalyzer = require('./seo/contentAnalyzer');
+const LinkingAnalyzer = require('./seo/linkingAnalyzer');
+const SeoScoring = require('./seo/seoScoring');
+
 const MAX_CONCURRENT_REQUESTS = parseInt(process.env.MAX_CONCURRENT_REQUESTS, 10) || 5;
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT, 10) || 10000;
 const USER_AGENT = process.env.USER_AGENT || 'PerfectLinks Bot/2.0 (+https://perfectlinks.artkabis.fr)';
@@ -260,10 +266,17 @@ class SitemapService {
 
       logger.info(`Page ${pageUrl}: Found ${totalLinksFound} total <a href> tags, ${internalLinksCount} matching internal links`);
 
+      // Extract SEO data (on-page + content analysis)
+      const seoData = {
+        onPage: OnPageAnalyzer.analyze($, pageUrl),
+        content: ContentAnalyzer.analyze($, pageUrl),
+      };
+
       return {
         url: pageUrl,
         statusCode: response.status,
         links,
+        seo: seoData, // Add SEO analysis data
       };
     } catch (error) {
       logger.error(`Error analyzing page ${pageUrl}:`, error.message);
@@ -435,6 +448,15 @@ class SitemapService {
 
       const duration = Date.now() - startTime;
 
+      // Step 6: Analyze linking structure (anchor texts, depth, PageRank)
+      logger.info('Step 5: Analyzing linking structure...');
+      const linkingAnalysis = LinkingAnalyzer.analyzeGlobal(internalLinksData);
+
+      // Step 7: Calculate SEO scores and detect issues
+      logger.info('Step 6: Calculating SEO scores...');
+      const seoScoring = SeoScoring.calculateSiteScore(internalLinksData, linkingAnalysis);
+      const benchmark = SeoScoring.generateBenchmark(internalLinksData);
+
       logger.info(`Sitemap analysis completed in ${duration}ms`);
 
       return {
@@ -448,6 +470,11 @@ class SitemapService {
           totalInternalLinks: allInternalLinks.size,
           orphanLinks: missingLinks.length,
           duration: `${duration}ms`,
+        },
+        seo: {
+          scoring: seoScoring,
+          linking: linkingAnalysis,
+          benchmark,
         },
       };
     } catch (error) {
