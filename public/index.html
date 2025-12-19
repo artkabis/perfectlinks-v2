@@ -986,54 +986,114 @@
                                     <div v-for="page in filteredPages.slice(0, 50)" :key="page.link" style="margin-bottom: 16px;">
                                         <div class="accordion-item">
                                             <div class="accordion-header" @click="toggleAccordion(page.link)">
-                                                <div>
-                                                    <strong>{{ page.seo?.onPage?.title?.text || page.link }}</strong>
-                                                    <div style="font-size: 12px; color: var(--text-gray); margin-top: 4px;">{{ page.link }}</div>
+                                                <div style="flex: 1; min-width: 0;">
+                                                    <strong style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                        {{ page.seo?.onPage?.title?.text || page.link }}
+                                                    </strong>
+                                                    <div style="font-size: 12px; color: var(--text-gray); margin-top: 4px;">
+                                                        <span :class="'badge ' + (page.statusCode === 200 ? 'badge-success' : 'badge-danger')">
+                                                            {{ page.statusCode }}
+                                                        </span>
+                                                        {{ page.link }}
+                                                    </div>
                                                 </div>
-                                                <div style="display: flex; align-items: center; gap: 12px;">
+                                                <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+                                                    <span class="badge badge-info">
+                                                        {{ page.internalLinks?.length || 0 }} liens
+                                                    </span>
                                                     <span v-if="page.seo?.content?.quality" :class="getQualityBadgeClass(page.seo.content.quality.quality)">
                                                         {{ page.seo.content.quality.wordCount }} mots
-                                                    </span>
-                                                    <span v-if="page.seo?.onPage?.headings" :class="page.seo.onPage.headings.hasH1 ? 'badge badge-success' : 'badge badge-danger'">
-                                                        {{ page.seo.onPage.headings.hasH1 ? '✓ H1' : '✗ H1' }}
                                                     </span>
                                                     <span :class="'accordion-icon' + (openAccordions[page.link] ? ' open' : '')">▼</span>
                                                 </div>
                                             </div>
                                             <div :class="'accordion-content' + (openAccordions[page.link] ? ' open' : '')">
-                                                <div v-if="page.seo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                                                <!-- Internal Links from this page -->
+                                                <div style="margin-bottom: 24px;">
+                                                    <h4 style="margin-bottom: 12px; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                                                        🔗 Liens Internes Sortants
+                                                        <span class="badge badge-info">{{ page.internalLinks?.length || 0 }}</span>
+                                                    </h4>
+                                                    <div v-if="page.internalLinks && page.internalLinks.length > 0">
+                                                        <table class="data-table" style="width: 100%; font-size: 13px;">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th style="width: 40%;">URL Cible</th>
+                                                                    <th style="width: 35%;">Texte d'Ancre</th>
+                                                                    <th style="width: 10%;">Statut</th>
+                                                                    <th style="width: 15%;">Type</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr v-for="(link, idx) in page.internalLinks" :key="idx">
+                                                                    <td style="font-size: 12px; word-break: break-all;">{{ link.url }}</td>
+                                                                    <td>
+                                                                        <span v-if="link.anchor && link.anchor !== '(no anchor text)'" style="color: var(--text);">
+                                                                            "{{ link.anchor }}"
+                                                                        </span>
+                                                                        <span v-else style="color: var(--text-gray); font-style: italic;">
+                                                                            (sans ancre)
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span :class="'badge ' + (link.status === 200 ? 'badge-success' : link.status === 301 || link.status === 302 ? 'badge-warning' : 'badge-danger')">
+                                                                            {{ link.status }}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span v-if="link.isCta" class="badge badge-info">CTA</span>
+                                                                        <span v-else class="badge" style="background: var(--bg-gray); color: var(--text-gray);">Lien</span>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div v-else style="padding: 16px; background: var(--bg-gray); border-radius: 8px; text-align: center; color: var(--text-gray); font-size: 13px;">
+                                                        Aucun lien interne sortant détecté
+                                                    </div>
+                                                </div>
+
+                                                <!-- SEO Data if available -->
+                                                <div v-if="page.seo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
                                                     <!-- On-Page Data -->
-                                                    <div>
+                                                    <div v-if="page.seo.onPage">
                                                         <h4 style="margin-bottom: 12px; color: var(--primary);">📝 On-Page</h4>
                                                         <div style="font-size: 13px; line-height: 1.8;">
-                                                            <div><strong>Title:</strong> {{ page.seo.onPage.title.text || '-' }} ({{ page.seo.onPage.title.length }} car.)</div>
-                                                            <div><strong>Meta Desc:</strong> {{ page.seo.onPage.metaDescription.text || '-' }} ({{ page.seo.onPage.metaDescription.length }} car.)</div>
-                                                            <div><strong>H1:</strong> {{ page.seo.onPage.headings.h1.map(h => h.text).join(', ') || '-' }}</div>
-                                                            <div><strong>H2:</strong> {{ page.seo.onPage.headings.h2.length }} titre(s)</div>
-                                                            <div><strong>Images:</strong> {{ page.seo.onPage.images.total }} ({{ page.seo.onPage.images.withoutAlt }} sans alt)</div>
-                                                            <div><strong>Canonical:</strong> {{ page.seo.onPage.canonical.isSelf ? '✓ Self' : (page.seo.onPage.canonical.exists ? page.seo.onPage.canonical.url : '✗ Manquant') }}</div>
+                                                            <div><strong>Title:</strong> {{ page.seo.onPage.title?.text || '-' }} <span v-if="page.seo.onPage.title">({{ page.seo.onPage.title.length }} car.)</span></div>
+                                                            <div><strong>Meta Desc:</strong> {{ page.seo.onPage.metaDescription?.text || '-' }} <span v-if="page.seo.onPage.metaDescription">({{ page.seo.onPage.metaDescription.length }} car.)</span></div>
+                                                            <div v-if="page.seo.onPage.headings"><strong>H1:</strong> {{ page.seo.onPage.headings.h1?.map(h => h.text).join(', ') || '-' }}</div>
+                                                            <div v-if="page.seo.onPage.headings"><strong>H2:</strong> {{ page.seo.onPage.headings.h2?.length || 0 }} titre(s)</div>
+                                                            <div v-if="page.seo.onPage.images"><strong>Images:</strong> {{ page.seo.onPage.images.total }} ({{ page.seo.onPage.images.withoutAlt }} sans alt)</div>
                                                         </div>
                                                     </div>
 
                                                     <!-- Content Data -->
-                                                    <div>
+                                                    <div v-if="page.seo.content">
                                                         <h4 style="margin-bottom: 12px; color: var(--success);">📊 Contenu</h4>
                                                         <div style="font-size: 13px; line-height: 1.8;">
-                                                            <div><strong>Mots:</strong> {{ page.seo.content.text.wordCount }}</div>
-                                                            <div><strong>Lecture:</strong> {{ page.seo.content.text.readingTime.formatted }}</div>
-                                                            <div><strong>Qualité:</strong> <span :class="getQualityBadgeClass(page.seo.content.quality.quality)">{{ page.seo.content.quality.quality }}</span> ({{ page.seo.content.quality.score }}/100)</div>
-                                                            <div><strong>Top Keywords:</strong></div>
-                                                            <ul style="margin: 4px 0 0 20px;">
-                                                                <li v-for="kw in page.seo.content.keywords.slice(0, 5)" :key="kw.keyword">
-                                                                    {{ kw.keyword }} ({{ kw.frequency }}× - {{ kw.density }})
-                                                                </li>
-                                                            </ul>
+                                                            <div><strong>Mots:</strong> {{ page.seo.content.text?.wordCount || 0 }}</div>
+                                                            <div v-if="page.seo.content.text?.readingTime"><strong>Lecture:</strong> {{ page.seo.content.text.readingTime.formatted }}</div>
+                                                            <div v-if="page.seo.content.quality">
+                                                                <strong>Qualité:</strong>
+                                                                <span :class="getQualityBadgeClass(page.seo.content.quality.quality)">
+                                                                    {{ page.seo.content.quality.quality }}
+                                                                </span>
+                                                                ({{ page.seo.content.quality.score }}/100)
+                                                            </div>
+                                                            <div v-if="page.seo.content.keywords && page.seo.content.keywords.length > 0">
+                                                                <strong>Top Keywords:</strong>
+                                                                <ul style="margin: 4px 0 0 20px;">
+                                                                    <li v-for="kw in page.seo.content.keywords.slice(0, 5)" :key="kw.keyword">
+                                                                        {{ kw.keyword }} ({{ kw.frequency }}× - {{ kw.density }})
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
                                                         </div>
                                                     </div>
 
-                                                    <!-- Linking Data -->
+                                                    <!-- Linking Stats -->
                                                     <div>
-                                                        <h4 style="margin-bottom: 12px; color: var(--info);">🔗 Liens</h4>
+                                                        <h4 style="margin-bottom: 12px; color: var(--info);">📈 Statistiques de Maillage</h4>
                                                         <div style="font-size: 13px; line-height: 1.8;">
                                                             <div><strong>Liens sortants:</strong> {{ page.internalLinks?.length || 0 }}</div>
                                                             <div><strong>Liens entrants:</strong> {{ getIncomingLinksCount(page.link) }}</div>
@@ -1043,12 +1103,9 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Issues for this page -->
-                                                <div v-if="page.seo?.onPage?.seoIssues && page.seo.onPage.seoIssues.length > 0" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
-                                                    <h4 style="margin-bottom: 8px; color: var(--danger);">⚠️ Problèmes détectés:</h4>
-                                                    <div v-for="issue in page.seo.onPage.seoIssues" :key="issue.type" style="font-size: 13px; color: var(--text-gray); margin-bottom: 4px;">
-                                                        • {{ issue.message }}
-                                                    </div>
+                                                <!-- Message if no SEO data -->
+                                                <div v-if="!page.seo || (!page.seo.onPage && !page.seo.content)" style="margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 13px; color: #856404;">
+                                                    ℹ️ Les données SEO détaillées (balises, contenu, Hn) ne sont pas encore disponibles. Redémarrez le serveur avec les nouveaux modules SEO.
                                                 </div>
                                             </div>
                                         </div>
@@ -1192,50 +1249,91 @@
                                 </div>
                             </div>
 
-                            <!-- Tab: Benchmark -->
-                            <div :class="{'tab-pane': true, 'active': activeTab === 'benchmark'}">
+                            <!-- Tab: Statistics -->
+                            <div :class="{'tab-pane': true, 'active': activeTab === 'statistics'}">
                                 <div class="card">
                                     <div class="card-header">
                                         <h2 class="card-title">Statistiques Globales</h2>
                                     </div>
 
+                                    <!-- Available Stats -->
+                                    <h3 style="margin: 24px 0 16px; color: var(--primary);">📊 Statistiques de Maillage</h3>
                                     <div class="stat-grid">
-                                        <div class="stat-item">
-                                            <div class="stat-value">{{ analysisResult.seo.benchmark.avgTitleLength }}</div>
-                                            <div class="stat-label">Longueur Moyenne Title</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-value">{{ analysisResult.seo.benchmark.avgMetaDescLength }}</div>
-                                            <div class="stat-label">Longueur Moyenne Meta Desc</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-value">{{ analysisResult.seo.benchmark.avgWordCount }}</div>
-                                            <div class="stat-label">Nombre Moyen de Mots</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-value">{{ analysisResult.seo.benchmark.avgInternalLinks }}</div>
-                                            <div class="stat-label">Liens Internes Moyens</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-value">{{ analysisResult.seo.benchmark.pagesWithH1Percent }}%</div>
-                                            <div class="stat-label">Pages avec H1</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-value">{{ analysisResult.seo.benchmark.pagesWithMetaDescPercent }}%</div>
-                                            <div class="stat-label">Pages avec Meta Desc</div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <div class="stat-value">{{ analysisResult.seo.benchmark.pagesWithCanonicalPercent }}%</div>
-                                            <div class="stat-label">Pages avec Canonical</div>
-                                        </div>
                                         <div class="stat-item">
                                             <div class="stat-value">{{ analysisResult.meta.totalUrls }}</div>
                                             <div class="stat-label">Total Pages</div>
                                         </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">{{ analysisResult.meta.totalInternalLinks }}</div>
+                                            <div class="stat-label">Pages avec Liens</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">{{ Math.round(getAvgInternalLinks()) }}</div>
+                                            <div class="stat-label">Liens Sortants Moyens</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">{{ analysisResult.seo.linking.summary.orphanPages }}</div>
+                                            <div class="stat-label">Pages Orphelines</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">{{ analysisResult.seo.linking.summary.weakPages }}</div>
+                                            <div class="stat-label">Pages Faibles</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">{{ analysisResult.seo.linking.summary.hubPages }}</div>
+                                            <div class="stat-label">Pages Hub</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">{{ analysisResult.seo.linking.summary.deadEnds }}</div>
+                                            <div class="stat-label">Impasses</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">{{ analysisResult.seo.linking.summary.avgDepth }}</div>
+                                            <div class="stat-label">Profondeur Moyenne</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SEO Stats (if available) -->
+                                    <div v-if="analysisResult.seo.benchmark.avgTitleLength > 0">
+                                        <h3 style="margin: 32px 0 16px; color: var(--success);">📝 Statistiques SEO</h3>
+                                        <div class="stat-grid">
+                                            <div class="stat-item">
+                                                <div class="stat-value">{{ analysisResult.seo.benchmark.avgTitleLength }}</div>
+                                                <div class="stat-label">Longueur Moyenne Title</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-value">{{ analysisResult.seo.benchmark.avgMetaDescLength }}</div>
+                                                <div class="stat-label">Longueur Moyenne Meta Desc</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-value">{{ analysisResult.seo.benchmark.avgWordCount }}</div>
+                                                <div class="stat-label">Nombre Moyen de Mots</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-value">{{ analysisResult.seo.benchmark.pagesWithH1Percent }}%</div>
+                                                <div class="stat-label">Pages avec H1</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-value">{{ analysisResult.seo.benchmark.pagesWithMetaDescPercent }}%</div>
+                                                <div class="stat-label">Pages avec Meta Desc</div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-value">{{ analysisResult.seo.benchmark.pagesWithCanonicalPercent }}%</div>
+                                                <div class="stat-label">Pages avec Canonical</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-else style="margin: 24px 0; padding: 16px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                        <h4 style="margin: 0 0 8px; color: #856404;">ℹ️ Statistiques SEO non disponibles</h4>
+                                        <p style="margin: 0; font-size: 13px; color: #856404; line-height: 1.6;">
+                                            Les statistiques sur les balises (Title, Meta Description, H1, etc.) nécessitent les modules SEO backend.
+                                            <strong>Pour les activer :</strong> redémarrez le serveur avec les fichiers SEO mis à jour dans <code>src/services/seo/</code>
+                                        </p>
                                     </div>
 
                                     <!-- Depth Distribution Chart -->
-                                    <h3 style="margin: 32px 0 16px;">Distribution de la Profondeur</h3>
+                                    <h3 style="margin: 32px 0 16px; color: var(--info);">📈 Distribution de la Profondeur</h3>
                                     <div class="chart-container">
                                         <canvas id="depthChart"></canvas>
                                     </div>
@@ -1505,6 +1603,16 @@
             getCrawlDepth(url) {
                 const depth = this.analysisResult.seo.linking.crawlDepth.depths[url]
                 return depth !== undefined ? depth : 'N/A'
+            },
+
+            getAvgInternalLinks() {
+                if (!this.analysisResult?.datas?.internalLinks) return 0
+                const totalLinks = this.analysisResult.datas.internalLinks.reduce((sum, page) => {
+                    return sum + (page.internalLinks?.length || 0)
+                }, 0)
+                return this.analysisResult.datas.internalLinks.length > 0
+                    ? totalLinks / this.analysisResult.datas.internalLinks.length
+                    : 0
             },
 
             get brokenLinks() {
