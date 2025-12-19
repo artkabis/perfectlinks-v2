@@ -495,6 +495,130 @@
             margin-bottom: 16px;
         }
 
+        /* Layout Control Panel */
+        .layout-control-panel {
+            margin-bottom: 16px;
+            padding: 20px;
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .preset-btn {
+            padding: 10px 16px;
+            border: 2px solid var(--gray-200);
+            background: white;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--primary);
+            background: var(--gray-50);
+        }
+
+        .preset-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .preset-btn-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .preset-btn-desc {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .control-row {
+            display: grid;
+            grid-template-columns: 140px 1fr auto;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            font-size: 13px;
+            color: var(--gray-700);
+        }
+
+        .control-input {
+            width: 100%;
+        }
+
+        .control-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .zoom-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .zoom-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .zoom-btn:hover {
+            background: var(--gray-100);
+            border-color: var(--primary);
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-switch input[type="checkbox"] {
+            width: auto;
+            padding: 0;
+        }
+
         /* Depth Filter Control */
         .depth-filter {
             margin-bottom: 16px;
@@ -895,7 +1019,8 @@
                     <!-- Mindmap Tab -->
                     <div v-if="activeTab === 'mindmap'">
                         <div class="network-info">
-                            <strong>💡 Astuce :</strong> Zoomez avec la molette, déplacez les nœuds, cliquez sur une page pour voir ses détails.
+                            <strong>💡 Contrôles :</strong> Utilisez les préréglages ci-dessous pour ajuster l'affichage selon vos besoins.
+                            Déplacez les nœuds, zoomez avec la molette, cliquez sur une page pour voir ses détails.
                             Les pages en rouge reçoivent beaucoup de liens (forte autorité), en bleu peu de liens.
                             <strong>Les liens CTA sont exclus de cette visualisation.</strong>
                         </div>
@@ -929,17 +1054,169 @@
                             </div>
                         </div>
 
+                        <!-- Layout Control Panel -->
+                        <div class="layout-control-panel">
+                            <!-- Presets Section -->
+                            <div class="control-section">
+                                <div class="control-section-title">🎨 Préréglages d'affichage</div>
+                                <div class="preset-buttons">
+                                    <button
+                                        class="preset-btn"
+                                        :class="{ active: layoutPreset === 'compact' }"
+                                        @click="applyLayoutPreset('compact')"
+                                    >
+                                        <div class="preset-btn-title">Compact</div>
+                                        <div class="preset-btn-desc">Petits sites (< 40)</div>
+                                    </button>
+                                    <button
+                                        class="preset-btn"
+                                        :class="{ active: layoutPreset === 'balanced' }"
+                                        @click="applyLayoutPreset('balanced')"
+                                    >
+                                        <div class="preset-btn-title">Équilibré</div>
+                                        <div class="preset-btn-desc">Sites moyens</div>
+                                    </button>
+                                    <button
+                                        class="preset-btn"
+                                        :class="{ active: layoutPreset === 'spacious' }"
+                                        @click="applyLayoutPreset('spacious')"
+                                    >
+                                        <div class="preset-btn-title">Aéré</div>
+                                        <div class="preset-btn-desc">Grand espacement</div>
+                                    </button>
+                                    <button
+                                        class="preset-btn"
+                                        :class="{ active: layoutPreset === 'hierarchical' }"
+                                        @click="applyLayoutPreset('hierarchical')"
+                                    >
+                                        <div class="preset-btn-title">Hiérarchique</div>
+                                        <div class="preset-btn-desc">Vue arborescente</div>
+                                    </button>
+                                    <button
+                                        class="preset-btn"
+                                        :class="{ active: layoutPreset === 'radial' }"
+                                        @click="applyLayoutPreset('radial')"
+                                    >
+                                        <div class="preset-btn-title">Radial</div>
+                                        <div class="preset-btn-desc">Centré sur accueil</div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Custom Controls Section -->
+                            <div v-if="layoutPreset !== 'hierarchical' && layoutPreset !== 'radial'" class="control-section">
+                                <div class="control-section-title">⚙️ Paramètres personnalisés</div>
+
+                                <div class="control-row">
+                                    <span class="control-label">Force de gravité</span>
+                                    <input
+                                        type="range"
+                                        class="control-input"
+                                        v-model.number="layoutSettings.gravity"
+                                        min="-10000"
+                                        max="-500"
+                                        step="500"
+                                        @change="updateLayout"
+                                    >
+                                    <span class="control-value">{{ Math.abs(layoutSettings.gravity) }}</span>
+                                </div>
+
+                                <div class="control-row">
+                                    <span class="control-label">Longueur ressorts</span>
+                                    <input
+                                        type="range"
+                                        class="control-input"
+                                        v-model.number="layoutSettings.springLength"
+                                        min="50"
+                                        max="400"
+                                        step="10"
+                                        @change="updateLayout"
+                                    >
+                                    <span class="control-value">{{ layoutSettings.springLength }}</span>
+                                </div>
+
+                                <div class="control-row">
+                                    <span class="control-label">Force ressorts</span>
+                                    <input
+                                        type="range"
+                                        class="control-input"
+                                        v-model.number="layoutSettings.springConstant"
+                                        min="0.01"
+                                        max="0.1"
+                                        step="0.01"
+                                        @change="updateLayout"
+                                    >
+                                    <span class="control-value">{{ layoutSettings.springConstant.toFixed(2) }}</span>
+                                </div>
+
+                                <div class="control-row">
+                                    <span class="control-label">Physique</span>
+                                    <div class="toggle-switch">
+                                        <input
+                                            type="checkbox"
+                                            v-model="layoutSettings.physicsEnabled"
+                                            @change="togglePhysics"
+                                        >
+                                        <span style="font-size: 13px; color: var(--gray-600);">
+                                            {{ layoutSettings.physicsEnabled ? 'Activée' : 'Désactivée' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hierarchical Settings -->
+                            <div v-if="layoutPreset === 'hierarchical'" class="control-section">
+                                <div class="control-section-title">⚙️ Paramètres hiérarchiques</div>
+
+                                <div class="control-row">
+                                    <span class="control-label">Espacement nœuds</span>
+                                    <input
+                                        type="range"
+                                        class="control-input"
+                                        v-model.number="layoutSettings.nodeSpacing"
+                                        min="80"
+                                        max="200"
+                                        step="10"
+                                        @change="updateLayout"
+                                    >
+                                    <span class="control-value">{{ layoutSettings.nodeSpacing }}</span>
+                                </div>
+
+                                <div class="control-row">
+                                    <span class="control-label">Séparation niveaux</span>
+                                    <input
+                                        type="range"
+                                        class="control-input"
+                                        v-model.number="layoutSettings.levelSeparation"
+                                        min="100"
+                                        max="300"
+                                        step="10"
+                                        @change="updateLayout"
+                                    >
+                                    <span class="control-value">{{ layoutSettings.levelSeparation }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Zoom Controls -->
+                            <div class="control-section">
+                                <div class="control-section-title">🔍 Zoom</div>
+                                <div class="zoom-buttons">
+                                    <button class="zoom-btn" @click="setZoom(0.5)">50%</button>
+                                    <button class="zoom-btn" @click="setZoom(0.75)">75%</button>
+                                    <button class="zoom-btn" @click="setZoom(1.0)">100%</button>
+                                    <button class="zoom-btn" @click="setZoom(1.5)">150%</button>
+                                    <button class="zoom-btn" @click="setZoom(2.0)">200%</button>
+                                    <button class="btn btn-secondary btn-small" @click="fitNetwork">Ajuster</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="legend">
                             <div class="legend-item gradient-legend">
                                 <strong>Code couleur :</strong>
                                 <div class="gradient-bar"></div>
                                 <span>Peu de liens ← → Beaucoup de liens</span>
                             </div>
-                        </div>
-
-                        <div class="network-controls">
-                            <button @click="fitNetwork" class="btn btn-secondary">🔍 Ajuster la vue</button>
-                            <button @click="resetNetwork" class="btn btn-secondary">🔄 Réinitialiser</button>
                         </div>
 
                         <div class="mindmap-container">
@@ -1135,6 +1412,16 @@
             // Mindmap depth filter
             maxDepthFilter: 3,
             showAllNodes: false,
+            // Layout controls
+            layoutPreset: 'balanced',
+            layoutSettings: {
+                gravity: -2000,
+                springLength: 150,
+                springConstant: 0.04,
+                physicsEnabled: true,
+                nodeSpacing: 120,
+                levelSeparation: 150
+            },
 
             get stats() {
                 if (!this.analysisResult?.datas?.internalLinks) {
@@ -1563,67 +1850,11 @@
                         edges: new vis.DataSet(edges)
                     };
 
-                    // Progressive optimization based on page count
-                    let options;
-
-                    if (pageCount <= 40) {
-                        // Small sites: force-directed layout
-                        options = {
-                            nodes: { borderWidth: 2 },
-                            edges: { width: 1 },
-                            physics: {
-                                barnesHut: {
-                                    gravitationalConstant: -2000,
-                                    springLength: 150,
-                                    springConstant: 0.04
-                                }
-                            },
-                            interaction: { hover: true, zoomView: true }
-                        };
-                    } else if (pageCount <= 100) {
-                        // Medium sites: force-directed + freeze after stabilization
-                        options = {
-                            nodes: { borderWidth: 2 },
-                            edges: { width: 1 },
-                            physics: {
-                                barnesHut: {
-                                    gravitationalConstant: -3000,
-                                    springLength: 180,
-                                    springConstant: 0.03
-                                }
-                            },
-                            interaction: { hover: true, zoomView: true }
-                        };
-                    } else {
-                        // Large sites: hierarchical layout
-                        options = {
-                            nodes: { borderWidth: 2 },
-                            edges: { width: 1, smooth: { type: 'cubicBezier' } },
-                            layout: {
-                                hierarchical: {
-                                    enabled: true,
-                                    direction: 'UD',
-                                    sortMethod: 'directed',
-                                    nodeSpacing: 120,
-                                    levelSeparation: 150,
-                                    treeSpacing: 200
-                                }
-                            },
-                            physics: { enabled: false },
-                            interaction: { hover: true, zoomView: true, dragView: true }
-                        };
-                    }
+                    // Build options based on layout preset and settings
+                    let options = this.buildNetworkOptions();
 
                     this.network = new vis.Network(container, data, options);
                     this.networkInitialized = true;
-
-                    // Freeze physics after stabilization for medium sites
-                    if (pageCount > 40 && pageCount <= 100) {
-                        this.network.on('stabilizationIterationsDone', () => {
-                            this.network.setOptions({ physics: { enabled: false } });
-                            console.log('🎯 Mindmap stabilisée et figée');
-                        });
-                    }
 
                     // Event: click on node
                     this.network.on('click', (params) => {
@@ -1656,6 +1887,126 @@
                     this.networkInitialized = false;
                     this.selectedPageUrl = null;
                     this.initNetwork();
+                }
+            },
+
+            // Layout control methods
+            buildNetworkOptions() {
+                const baseOptions = {
+                    nodes: { borderWidth: 2 },
+                    edges: { width: 1 },
+                    interaction: { hover: true, zoomView: true, dragView: true }
+                };
+
+                if (this.layoutPreset === 'hierarchical') {
+                    return {
+                        ...baseOptions,
+                        edges: { width: 1, smooth: { type: 'cubicBezier' } },
+                        layout: {
+                            hierarchical: {
+                                enabled: true,
+                                direction: 'UD',
+                                sortMethod: 'directed',
+                                nodeSpacing: this.layoutSettings.nodeSpacing,
+                                levelSeparation: this.layoutSettings.levelSeparation,
+                                treeSpacing: 200
+                            }
+                        },
+                        physics: { enabled: false }
+                    };
+                } else if (this.layoutPreset === 'radial') {
+                    // Find homepage as center
+                    const homepage = this.analysisResult?.datas?.internalLinks[0]?.link;
+                    return {
+                        ...baseOptions,
+                        edges: { smooth: { type: 'curvedCW', roundness: 0.2 } },
+                        layout: {
+                            hierarchical: {
+                                enabled: true,
+                                direction: 'UD',
+                                sortMethod: 'directed',
+                                nodeSpacing: 180,
+                                levelSeparation: 200
+                            }
+                        },
+                        physics: { enabled: false }
+                    };
+                } else {
+                    // Force-directed layouts (compact, balanced, spacious)
+                    return {
+                        ...baseOptions,
+                        edges: { smooth: { type: 'curvedCW', roundness: 0.2 } },
+                        physics: {
+                            enabled: this.layoutSettings.physicsEnabled,
+                            barnesHut: {
+                                gravitationalConstant: this.layoutSettings.gravity,
+                                springLength: this.layoutSettings.springLength,
+                                springConstant: this.layoutSettings.springConstant,
+                                avoidOverlap: 0.2
+                            },
+                            stabilization: {
+                                iterations: 150,
+                                updateInterval: 25
+                            }
+                        }
+                    };
+                }
+            },
+
+            applyLayoutPreset(preset) {
+                this.layoutPreset = preset;
+
+                // Apply preset-specific settings
+                switch (preset) {
+                    case 'compact':
+                        this.layoutSettings.gravity = -1500;
+                        this.layoutSettings.springLength = 100;
+                        this.layoutSettings.springConstant = 0.05;
+                        this.layoutSettings.physicsEnabled = true;
+                        break;
+                    case 'balanced':
+                        this.layoutSettings.gravity = -2000;
+                        this.layoutSettings.springLength = 150;
+                        this.layoutSettings.springConstant = 0.04;
+                        this.layoutSettings.physicsEnabled = true;
+                        break;
+                    case 'spacious':
+                        this.layoutSettings.gravity = -4000;
+                        this.layoutSettings.springLength = 250;
+                        this.layoutSettings.springConstant = 0.02;
+                        this.layoutSettings.physicsEnabled = true;
+                        break;
+                    case 'hierarchical':
+                        this.layoutSettings.nodeSpacing = 120;
+                        this.layoutSettings.levelSeparation = 150;
+                        this.layoutSettings.physicsEnabled = false;
+                        break;
+                    case 'radial':
+                        this.layoutSettings.physicsEnabled = false;
+                        break;
+                }
+
+                this.resetNetwork();
+            },
+
+            updateLayout() {
+                if (this.network) {
+                    const options = this.buildNetworkOptions();
+                    this.network.setOptions(options);
+                }
+            },
+
+            togglePhysics() {
+                if (this.network) {
+                    this.network.setOptions({
+                        physics: { enabled: this.layoutSettings.physicsEnabled }
+                    });
+                }
+            },
+
+            setZoom(scale) {
+                if (this.network) {
+                    this.network.moveTo({ scale: scale, animation: { duration: 500 } });
                 }
             }
         }).mount('#app');
