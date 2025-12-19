@@ -3,11 +3,116 @@ const xml2js = require('xml2js');
 const cheerio = require('cheerio');
 const logger = require('../utils/logger');
 
+// SEO Analyzers
+const OnPageAnalyzer = require('./seo/onPageAnalyzer');
+const ContentAnalyzer = require('./seo/contentAnalyzer');
+const LinkingAnalyzer = require('./seo/linkingAnalyzer');
+const SeoScoring = require('./seo/seoScoring');
+
 const MAX_CONCURRENT_REQUESTS = parseInt(process.env.MAX_CONCURRENT_REQUESTS, 10) || 5;
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT, 10) || 10000;
 const USER_AGENT = process.env.USER_AGENT || 'PerfectLinks Bot/2.0 (+https://perfectlinks.artkabis.fr)';
 
+// Content selectors for main content areas (excluding header/footer)
+const CONTENT_SELECTORS = [
+  '#main-content',
+  '#dm_content',
+  '#Content',
+  '.entry-layout',
+  'main',
+  '#main',
+  '.main-page',
+  '.l-submain',
+  '.main-wrapper',
+  'article',
+  '.content',
+  '.post-content',
+  '.entry-content',
+  '[role="main"]',
+].join(', ');
+
+// Media file extensions to exclude from link analysis
+const MEDIA_EXTENSIONS = [
+  '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp', '.ico', '.tiff',
+  '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv',
+  '.mp3', '.wav', '.ogg', '.m4a', '.flac',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.zip', '.rar', '.tar', '.gz', '.7z',
+  '.exe', '.dmg', '.apk', '.css', '.js'
+];
+
 class SitemapService {
+  /**
+   * Check if URL points to a media file
+   * @param {string} url - URL to check
+   * @returns {boolean} True if URL is a media file
+   */
+  static isMediaFile(url) {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname.toLowerCase();
+      return MEDIA_EXTENSIONS.some(ext => pathname.endsWith(ext));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Check if link is in main content area (not header/footer/nav)
+   * @param {CheerioAPI} $ - Cheerio instance
+   * @param {Element} element - Link element to check
+   * @returns {boolean} True if link is in main content
+   */
+  static isInMainContent($, element) {
+    const $element = $(element);
+
+    // Exclude header/footer/nav areas
+    if ($element.closest('header, footer, nav, .header, .footer, .nav, .navigation, .menu, .sidebar, .widget, [role="navigation"], [role="banner"], [role="contentinfo"]').length > 0) {
+      return false;
+    }
+
+    // Check if in main content using CONTENT_SELECTORS
+    const isInMain = $element.closest(CONTENT_SELECTORS).length > 0;
+
+    return isInMain;
+  }
+
+  /**
+   * Check if link is a valid content link (not anchor, mailto, tel, etc.)
+   * @param {string} href - Link href attribute
+   * @returns {boolean} True if link is valid
+   */
+  static isValidLink(href) {
+    if (!href) return false;
+
+    // Exclude anchors, mailto, tel, javascript, etc.
+    if (href.startsWith('#') ||
+        href.startsWith('mailto:') ||
+        href.startsWith('tel:') ||
+        href.startsWith('javascript:') ||
+        href.startsWith('data:')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Check if link is a CTA button (call to action)
+   * @param {CheerioAPI} $ - Cheerio instance
+   * @param {Element} element - Link element to check
+   * @returns {boolean} True if link is a CTA button
+   */
+  static isCtaButton($, element) {
+    const $element = $(element);
+    const classList = $element.attr('class') || '';
+
+    // Common CTA button classes
+    const ctaPatterns = /btn|button|cta|call-to-action|download|subscribe|buy|purchase/i;
+
+    return ctaPatterns.test(classList);
+  }
+
   /**
    * Parse sitemap XML and extract URLs
    * @param {string} sitemapUrl - URL of the sitemap
@@ -106,6 +211,11 @@ class SitemapService {
 
         totalLinksFound++;
 
+        // Filter 1: Check if valid link (not mailto, tel, anchor, etc.)
+        if (!this.isValidLink(href)) {
+          return;
+        }
+
         try {
           // Resolve relative URLs
           const absoluteUrl = new URL(href, pageUrl).href;
@@ -121,6 +231,18 @@ class SitemapService {
 
           // Only process internal links (same domain)
           if (linkDomainNormalized === baseDomainNormalized) {
+            // Filter 2: Exclude media files
+            if (this.isMediaFile(absoluteUrl)) {
+              logger.debug(`  Skipping media file: ${absoluteUrl}`);
+              return;
+            }
+
+            // Filter 3: Only include links in main content (not header/footer)
+            if (!this.isInMainContent($, element)) {
+              logger.debug(`  Skipping non-content link: ${absoluteUrl}`);
+              return;
+            }
+
             internalLinksCount++;
 
             // Remove hash and trailing slash for consistency
@@ -131,6 +253,7 @@ class SitemapService {
               anchor: anchor || '(no anchor text)',
               status: null, // Will be checked later
               redirectUrl: null,
+              isCta: this.isCtaButton($, element), // Mark CTA buttons
             });
           }
         } catch (e) {
@@ -143,10 +266,17 @@ class SitemapService {
 
       logger.info(`Page ${pageUrl}: Found ${totalLinksFound} total <a href> tags, ${internalLinksCount} matching internal links`);
 
+      // Extract SEO data (on-page + content analysis)
+      const seoData = {
+        onPage: OnPageAnalyzer.analyze($, pageUrl),
+        content: ContentAnalyzer.analyze($, pageUrl),
+      };
+
       return {
         url: pageUrl,
         statusCode: response.status,
         links,
+        seo: seoData, // Add SEO analysis data
       };
     } catch (error) {
       logger.error(`Error analyzing page ${pageUrl}:`, error.message);
@@ -161,39 +291,58 @@ class SitemapService {
   }
 
   /**
-   * Check HTTP status of a URL
+   * Check HTTP status of a URL (follows redirects to get final status)
    * @param {string} url - URL to check
    * @returns {Promise<Object>} Status info
    */
   static async checkUrlStatus(url) {
     try {
-      const response = await axios.head(url, {
+      // Use GET with redirect following to get final status
+      const response = await axios.get(url, {
         timeout: REQUEST_TIMEOUT,
         headers: {
           'User-Agent': USER_AGENT,
         },
-        maxRedirects: 0, // Don't follow redirects
+        maxRedirects: 5, // Follow redirects to get final status
         validateStatus: () => true, // Accept all status codes
       });
 
       const result = {
         url,
-        status: response.status,
+        status: response.status, // Final status after redirects
         redirectUrl: null,
       };
 
-      // Check for redirects
-      if (response.status >= 300 && response.status < 400) {
-        result.redirectUrl = response.headers.location;
+      // Check if URL was redirected
+      if (response.request?.res?.responseUrl && response.request.res.responseUrl !== url) {
+        result.redirectUrl = response.request.res.responseUrl;
       }
 
       return result;
     } catch (error) {
-      return {
-        url,
-        status: 0,
-        error: error.message,
-      };
+      // Fallback to HEAD request if GET fails
+      try {
+        const headResponse = await axios.head(url, {
+          timeout: REQUEST_TIMEOUT,
+          headers: {
+            'User-Agent': USER_AGENT,
+          },
+          maxRedirects: 5,
+          validateStatus: () => true,
+        });
+
+        return {
+          url,
+          status: headResponse.status,
+          redirectUrl: null,
+        };
+      } catch (headError) {
+        return {
+          url,
+          status: 0,
+          error: error.message,
+        };
+      }
     }
   }
 
@@ -299,6 +448,15 @@ class SitemapService {
 
       const duration = Date.now() - startTime;
 
+      // Step 6: Analyze linking structure (anchor texts, depth, PageRank)
+      logger.info('Step 5: Analyzing linking structure...');
+      const linkingAnalysis = LinkingAnalyzer.analyzeGlobal(internalLinksData);
+
+      // Step 7: Calculate SEO scores and detect issues
+      logger.info('Step 6: Calculating SEO scores...');
+      const seoScoring = SeoScoring.calculateSiteScore(internalLinksData, linkingAnalysis);
+      const benchmark = SeoScoring.generateBenchmark(internalLinksData);
+
       logger.info(`Sitemap analysis completed in ${duration}ms`);
 
       return {
@@ -312,6 +470,11 @@ class SitemapService {
           totalInternalLinks: allInternalLinks.size,
           orphanLinks: missingLinks.length,
           duration: `${duration}ms`,
+        },
+        seo: {
+          scoring: seoScoring,
+          linking: linkingAnalysis,
+          benchmark,
         },
       };
     } catch (error) {
