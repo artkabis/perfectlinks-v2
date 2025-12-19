@@ -282,18 +282,24 @@ class SitemapService {
         content: ContentAnalyzer.analyze($, pageUrl),
       } : null;
 
-      return {
+      const result = {
         url: pageUrl,
         statusCode: response.status,
         links,
-        ...(seoData && { seo: seoData }), // Only add SEO data if available
       };
+
+      // Add SEO data only if available (compatible syntax)
+      if (seoData) {
+        result.seo = seoData;
+      }
+
+      return result;
     } catch (error) {
       logger.error(`Error analyzing page ${pageUrl}:`, error.message);
 
       return {
         url: pageUrl,
-        statusCode: error.response?.status || 0,
+        statusCode: (error.response && error.response.status) || 0,
         links: [],
         error: error.message,
       };
@@ -324,7 +330,7 @@ class SitemapService {
       };
 
       // Check if URL was redirected
-      if (response.request?.res?.responseUrl && response.request.res.responseUrl !== url) {
+      if (response.request && response.request.res && response.request.res.responseUrl && response.request.res.responseUrl !== url) {
         result.redirectUrl = response.request.res.responseUrl;
       }
 
