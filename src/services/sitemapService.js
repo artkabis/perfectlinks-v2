@@ -3,11 +3,21 @@ const xml2js = require('xml2js');
 const cheerio = require('cheerio');
 const logger = require('../utils/logger');
 
-// SEO Analyzers
-const OnPageAnalyzer = require('./seo/onPageAnalyzer');
-const ContentAnalyzer = require('./seo/contentAnalyzer');
-const LinkingAnalyzer = require('./seo/linkingAnalyzer');
-const SeoScoring = require('./seo/seoScoring');
+// SEO Analyzers (optional - graceful fallback if not available)
+let OnPageAnalyzer, ContentAnalyzer, LinkingAnalyzer, SeoScoring;
+let seoModulesAvailable = false;
+
+try {
+  OnPageAnalyzer = require('./seo/onPageAnalyzer');
+  ContentAnalyzer = require('./seo/contentAnalyzer');
+  LinkingAnalyzer = require('./seo/linkingAnalyzer');
+  SeoScoring = require('./seo/seoScoring');
+  seoModulesAvailable = true;
+  logger.info('SEO analysis modules loaded successfully');
+} catch (error) {
+  logger.warn('SEO analysis modules not available. Running in basic mode.', { error: error.message });
+  seoModulesAvailable = false;
+}
 
 const MAX_CONCURRENT_REQUESTS = parseInt(process.env.MAX_CONCURRENT_REQUESTS, 10) || 5;
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT, 10) || 10000;
@@ -266,17 +276,17 @@ class SitemapService {
 
       logger.info(`Page ${pageUrl}: Found ${totalLinksFound} total <a href> tags, ${internalLinksCount} matching internal links`);
 
-      // Extract SEO data (on-page + content analysis)
-      const seoData = {
+      // Extract SEO data (on-page + content analysis) - only if modules are available
+      const seoData = seoModulesAvailable ? {
         onPage: OnPageAnalyzer.analyze($, pageUrl),
         content: ContentAnalyzer.analyze($, pageUrl),
-      };
+      } : null;
 
       return {
         url: pageUrl,
         statusCode: response.status,
         links,
-        seo: seoData, // Add SEO analysis data
+        ...(seoData && { seo: seoData }), // Only add SEO data if available
       };
     } catch (error) {
       logger.error(`Error analyzing page ${pageUrl}:`, error.message);
@@ -449,13 +459,39 @@ class SitemapService {
       const duration = Date.now() - startTime;
 
       // Step 6: Analyze linking structure (anchor texts, depth, PageRank)
-      logger.info('Step 5: Analyzing linking structure...');
-      const linkingAnalysis = LinkingAnalyzer.analyzeGlobal(internalLinksData);
+      let linkingAnalysis, seoScoring, benchmark;
 
-      // Step 7: Calculate SEO scores and detect issues
-      logger.info('Step 6: Calculating SEO scores...');
-      const seoScoring = SeoScoring.calculateSiteScore(internalLinksData, linkingAnalysis);
-      const benchmark = SeoScoring.generateBenchmark(internalLinksData);
+      if (seoModulesAvailable) {
+        logger.info('Step 5: Analyzing linking structure...');
+        linkingAnalysis = LinkingAnalyzer.analyzeGlobal(internalLinksData);
+
+        // Step 7: Calculate SEO scores and detect issues
+        logger.info('Step 6: Calculating SEO scores...');
+        seoScoring = SeoScoring.calculateSiteScore(internalLinksData, linkingAnalysis);
+        benchmark = SeoScoring.generateBenchmark(internalLinksData);
+      } else {
+        logger.info('SEO modules not available - using basic analysis');
+        // Provide basic fallback data
+        linkingAnalysis = {
+          linkGraph: {},
+          anchorTexts: { totalAnchors: 0, topAnchors: [], problematicAnchors: [], anchorsByUrl: {} },
+          crawlDepth: { homepage: '', depths: {}, distribution: {}, deepPages: [], avgDepth: 0 },
+          pageRank: { pageRank: {}, topPages: [], weakPages: [] },
+          summary: { totalPages: internalLinksData.length, orphanPages: 0, orphanPagesList: [], weakPages: 0, weakPagesList: [], hubPages: 0, hubPagesList: [], deadEnds: 0, deadEndsList: [], avgDepth: '0', deepPages: 0 }
+        };
+        seoScoring = {
+          overall: 0,
+          breakdown: { onPage: 0, technical: 0, content: 0, linking: 0 },
+          issues: { high: [], medium: [], low: [], total: 0, byType: {} },
+          opportunities: [],
+          priorities: []
+        };
+        benchmark = {
+          avgTitleLength: 0, avgMetaDescLength: 0, avgWordCount: 0, avgInternalLinks: 0,
+          pagesWithH1: 0, pagesWithMetaDesc: 0, pagesWithCanonical: 0, totalPages: internalLinksData.length,
+          pagesWithH1Percent: 0, pagesWithMetaDescPercent: 0, pagesWithCanonicalPercent: 0
+        };
+      }
 
       logger.info(`Sitemap analysis completed in ${duration}ms`);
 
