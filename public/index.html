@@ -851,13 +851,13 @@
                     <div class="tabs">
                         <nav class="tab-nav">
                             <button :class="{'tab-button': true, 'active': activeTab === 'priorities'}" @click="activeTab = 'priorities'">
-                                🎯 Priorités ({{ analysisResult.seo.scoring.priorities.length }})
+                                🎯 Priorités ({{ analysisResult?.seo?.scoring?.priorities?.length || 0 }})
                             </button>
                             <button :class="{'tab-button': true, 'active': activeTab === 'issues'}" @click="activeTab = 'issues'">
-                                ⚠️ Problèmes ({{ analysisResult.seo.scoring.issues.total }})
+                                ⚠️ Problèmes ({{ analysisResult?.seo?.scoring?.issues?.total || 0 }})
                             </button>
                             <button :class="{'tab-button': true, 'active': activeTab === 'pages'}" @click="activeTab = 'pages'">
-                                📄 Pages SEO ({{ analysisResult.datas.internalLinks.length }})
+                                📄 Pages SEO ({{ analysisResult?.datas?.internalLinks?.length || 0 }})
                             </button>
                             <button :class="{'tab-button': true, 'active': activeTab === 'linking'}" @click="activeTab = 'linking'">
                                 🔗 Maillage
@@ -869,10 +869,10 @@
                                 📊 Statistiques
                             </button>
                             <button :class="{'tab-button': true, 'active': activeTab === 'broken'}" @click="activeTab = 'broken'">
-                                💔 Liens Cassés ({{ brokenLinks.length }})
+                                💔 Liens Cassés ({{ brokenLinks?.length || 0 }})
                             </button>
                             <button :class="{'tab-button': true, 'active': activeTab === 'orphans'}" @click="activeTab = 'orphans'">
-                                👻 Orphelines ({{ analysisResult.datas.missingLinks.length }})
+                                👻 Orphelines ({{ analysisResult?.datas?.missingLinks?.length || 0 }})
                             </button>
                         </nav>
 
@@ -1449,6 +1449,7 @@
 
             // Page filtering
             get filteredPages() {
+                if (!this.analysisResult?.datas?.internalLinks) return []
                 if (!this.searchQuery) return this.analysisResult.datas.internalLinks
 
                 const query = this.searchQuery.toLowerCase()
