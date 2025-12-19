@@ -3,6 +3,33 @@ const logger = require('../utils/logger');
 const { ApiError } = require('../middleware/errorHandler');
 
 /**
+ * Detect sitemap URL(s) from a website
+ * GET /api/detect-sitemap?url=website_url
+ */
+const detectSitemap = async (req, res) => {
+  const { url } = req.query;
+
+  try {
+    logger.info(`Detecting sitemaps for: ${url} (user: ${req.user.email})`);
+
+    // Detect sitemaps from website
+    const sitemaps = await SitemapService.detectSitemapsFromWebsite(url);
+
+    logger.info(`Found ${sitemaps.length} sitemap(s) for: ${url}`);
+
+    res.json({
+      success: true,
+      websiteUrl: url,
+      sitemaps: sitemaps,
+      count: sitemaps.length
+    });
+  } catch (error) {
+    logger.error(`Sitemap detection failed for ${url}:`, error);
+    throw new ApiError(500, `Sitemap detection failed: ${error.message}`);
+  }
+};
+
+/**
  * Analyze sitemap and internal links
  * GET /api/sitemap-analysis?url=sitemap_url
  */
@@ -95,6 +122,7 @@ const getAnalysisStats = async (req, res) => {
 };
 
 module.exports = {
+  detectSitemap,
   analyzeSitemap,
   getAnalysisHistory,
   getAnalysisStats,

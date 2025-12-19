@@ -87,6 +87,17 @@ router.post(
   asyncHandler(authController.changePassword)
 );
 
+
+/**
+ * GET /api/detect-sitemap
+ * Detect sitemap URL(s) from a website by checking robots.txt
+ */
+router.get(
+  '/detect-sitemap',
+  authenticate,
+  validateUrl,
+  asyncHandler(analysisController.detectSitemap)
+);
 /**
  * GET /api/sitemap-analysis
  * Analyze sitemap and internal links (Main feature)

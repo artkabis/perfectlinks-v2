@@ -53,6 +53,105 @@ const MEDIA_EXTENSIONS = [
 
 class SitemapService {
   /**
+   * Detect sitemap URL(s) from a website by checking robots.txt
+   * @param {string} websiteUrl - Base URL of the website (e.g., https://example.com)
+   * @returns {Promise<Array<string>>} Array of sitemap URLs found
+   */
+  static async detectSitemapsFromWebsite(websiteUrl) {
+    try {
+      // Normalize URL (remove trailing slash)
+      const baseUrl = websiteUrl.replace(/\/$/, '');
+      const robotsUrl = `${baseUrl}/robots.txt`;
+
+      logger.info(`Detecting sitemaps from ${robotsUrl}`);
+
+      // Try to fetch robots.txt
+      try {
+        const response = await axios.get(robotsUrl, {
+          timeout: REQUEST_TIMEOUT,
+          headers: {
+            'User-Agent': USER_AGENT,
+          },
+          validateStatus: (status) => status < 500,
+        });
+
+        if (response.status === 200 && response.data) {
+          const robotsTxt = response.data;
+          const sitemaps = [];
+
+          // Parse robots.txt for Sitemap: directives
+          const lines = robotsTxt.split('\n');
+          lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.toLowerCase().startsWith('sitemap:')) {
+              const sitemapUrl = trimmed.substring(8).trim();
+              if (sitemapUrl) {
+                sitemaps.push(sitemapUrl);
+              }
+            }
+          });
+
+          if (sitemaps.length > 0) {
+            logger.info(`Found ${sitemaps.length} sitemap(s) in robots.txt: ${sitemaps.join(', ')}`);
+            return sitemaps;
+          }
+        }
+      } catch (robotsError) {
+        logger.warn(`Could not fetch robots.txt: ${robotsError.message}`);
+      }
+
+      // Fallback: Try common sitemap locations
+      logger.info('No sitemaps in robots.txt, trying common locations...');
+      const commonPaths = [
+        '/sitemap.xml',
+        '/sitemap_index.xml',
+        '/page-sitemap.xml',      // WordPress
+        '/post-sitemap.xml',       // WordPress
+        '/wp-sitemap.xml',         // WordPress 5.5+
+        '/sitemap-index.xml',
+        '/sitemaps.xml',
+      ];
+
+      const foundSitemaps = [];
+
+      for (const path of commonPaths) {
+        const testUrl = `${baseUrl}${path}`;
+        try {
+          const response = await axios.head(testUrl, {
+            timeout: 5000,
+            headers: { 'User-Agent': USER_AGENT },
+            validateStatus: (status) => status < 500,
+          });
+
+          if (response.status === 200) {
+            logger.info(`Found sitemap at: ${testUrl}`);
+            foundSitemaps.push(testUrl);
+
+            // For WordPress, if we found wp-sitemap.xml, stop (it's the main one)
+            if (path === '/wp-sitemap.xml' || path === '/sitemap.xml') {
+              break;
+            }
+          }
+        } catch (error) {
+          // Sitemap not found at this location, continue
+        }
+      }
+
+      if (foundSitemaps.length > 0) {
+        return foundSitemaps;
+      }
+
+      // If nothing found, default to /sitemap.xml
+      logger.warn('No sitemaps detected, defaulting to /sitemap.xml');
+      return [`${baseUrl}/sitemap.xml`];
+
+    } catch (error) {
+      logger.error('Error detecting sitemaps:', error.message);
+      throw new Error(`Failed to detect sitemaps: ${error.message}`);
+    }
+  }
+
+  /**
    * Check if URL points to a media file
    * @param {string} url - URL to check
    * @returns {boolean} True if URL is a media file
