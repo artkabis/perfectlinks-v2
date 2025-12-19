@@ -683,6 +683,67 @@
             color: var(--gray-700);
         }
 
+        /* Progress Display */
+        .progress-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--gray-50);
+            border-radius: 12px;
+            border: 2px solid var(--primary);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .progress-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .progress-counter {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 24px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+        }
+
+        .progress-percentage {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .progress-message {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--gray-600);
+            text-align: center;
+        }
+
         /* Page Details Panel */
         .page-details {
             background: white;
@@ -917,6 +978,22 @@
                             <span v-if="detectingSitemap || loading" class="loading"></span>
                             {{ loadingMessage || '🔍 Détecter et analyser' }}
                         </button>
+
+                        <!-- Progress Display -->
+                        <div v-if="loading && totalPagesToAnalyze > 0 && currentProgress > 0" class="progress-container">
+                            <div class="progress-header">
+                                <span class="progress-title">⏳ Crawling en cours...</span>
+                                <span class="progress-counter">{{ currentProgress }} / {{ totalPagesToAnalyze }}</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" :style="{ width: progressPercentage + '%' }">
+                                    <span class="progress-percentage" v-if="progressPercentage > 10">{{ Math.round(progressPercentage) }}%</span>
+                                </div>
+                            </div>
+                            <div class="progress-message">
+                                Pages analysées - Temps estimé restant : {{ estimatedTimeRemaining }}
+                            </div>
+                        </div>
                     </form>
                 </div>
 
@@ -1412,6 +1489,10 @@
             selectedSitemap: null,
             detectingSitemap: false,
             totalPagesToAnalyze: 0,
+            // Progress tracking
+            currentProgress: 0,
+            progressInterval: null,
+            progressStartTime: null,
             // Mindmap depth filter
             maxDepthFilter: 3,
             showAllNodes: false,
@@ -1424,6 +1505,23 @@
                 physicsEnabled: true,
                 nodeSpacing: 120,
                 levelSeparation: 150
+            },
+
+            get progressPercentage() {
+                if (this.totalPagesToAnalyze === 0) return 0;
+                return Math.min(100, (this.currentProgress / this.totalPagesToAnalyze) * 100);
+            },
+
+            get estimatedTimeRemaining() {
+                if (!this.progressStartTime || this.currentProgress === 0) return 'Calcul...';
+
+                const elapsed = Date.now() - this.progressStartTime;
+                const avgTimePerPage = elapsed / this.currentProgress;
+                const remaining = (this.totalPagesToAnalyze - this.currentProgress) * avgTimePerPage;
+
+                if (remaining < 1000) return '< 1s';
+                if (remaining < 60000) return `${Math.round(remaining / 1000)}s`;
+                return `${Math.round(remaining / 60000)}min ${Math.round((remaining % 60000) / 1000)}s`;
             },
 
             get stats() {
@@ -1656,6 +1754,34 @@
                 }
             },
 
+            // Start simulated progress
+            startProgressSimulation() {
+                this.currentProgress = 0;
+                this.progressStartTime = Date.now();
+
+                // Estimate ~500ms per page on average
+                const estimatedTotalTime = this.totalPagesToAnalyze * 500;
+                const updateInterval = 500; // Update every 500ms
+
+                this.progressInterval = setInterval(() => {
+                    const elapsed = Date.now() - this.progressStartTime;
+                    const estimatedProgress = Math.floor((elapsed / estimatedTotalTime) * this.totalPagesToAnalyze);
+
+                    // Cap at 95% until real completion
+                    this.currentProgress = Math.min(Math.floor(this.totalPagesToAnalyze * 0.95), estimatedProgress);
+                }, updateInterval);
+            },
+
+            // Stop progress simulation
+            stopProgressSimulation() {
+                if (this.progressInterval) {
+                    clearInterval(this.progressInterval);
+                    this.progressInterval = null;
+                }
+                // Complete to 100%
+                this.currentProgress = this.totalPagesToAnalyze;
+            },
+
             async analyzeSitemap() {
                 const sitemapToAnalyze = this.selectedSitemap || this.sitemapUrl;
 
@@ -1670,6 +1796,8 @@
                     // Update message with count
                     if (this.totalPagesToAnalyze > 0) {
                         this.loadingMessage = `⏳ Analyse en cours - ${this.totalPagesToAnalyze} page(s) à crawler...`;
+                        // Start progress simulation
+                        this.startProgressSimulation();
                     } else {
                         this.loadingMessage = '⏳ Analyse en cours - Crawling des pages du site...';
                     }
@@ -1685,6 +1813,9 @@
                     );
                     const data = await response.json();
                     if (response.ok) {
+                        // Complete progress immediately
+                        this.stopProgressSimulation();
+
                         this.analysisResult = Array.isArray(data) ? data[0] : data;
                         this.networkInitialized = false;
                         this.detectedSitemaps = []; // Reset
@@ -1696,14 +1827,18 @@
                     this.message = 'Erreur lors de l\'analyse';
                     this.messageType = 'error';
                 } finally {
+                    this.stopProgressSimulation();
                     this.loading = false;
                     this.detectingSitemap = false;
                     this.loadingMessage = '';
                     this.totalPagesToAnalyze = 0;
+                    this.currentProgress = 0;
+                    this.progressStartTime = null;
                 }
             },
 
             resetAnalysis() {
+                this.stopProgressSimulation();
                 this.analysisResult = null;
                 this.sitemapUrl = '';
                 this.activeTab = 'pages';
@@ -1715,6 +1850,8 @@
                 this.selectedPageUrl = null;
                 this.detectedSitemaps = [];
                 this.selectedSitemap = null;
+                this.currentProgress = 0;
+                this.progressStartTime = null;
             },
 
             toggleExpand(section) {
