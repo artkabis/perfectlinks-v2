@@ -1411,6 +1411,7 @@
             detectedSitemaps: [],
             selectedSitemap: null,
             detectingSitemap: false,
+            totalPagesToAnalyze: 0,
             // Mindmap depth filter
             maxDepthFilter: 3,
             showAllNodes: false,
@@ -1622,14 +1623,57 @@
                 }
             },
 
+            // Parse sitemap to count URLs
+            async countSitemapUrls(sitemapUrl) {
+                try {
+                    const response = await fetch(sitemapUrl);
+                    const xmlText = await response.text();
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+                    // Check for sitemap index (contains multiple sitemaps)
+                    const sitemapTags = xmlDoc.getElementsByTagName('sitemap');
+                    if (sitemapTags.length > 0) {
+                        // This is a sitemap index, count all sub-sitemaps
+                        let totalCount = 0;
+                        for (let i = 0; i < Math.min(sitemapTags.length, 5); i++) {
+                            const locTag = sitemapTags[i].getElementsByTagName('loc')[0];
+                            if (locTag) {
+                                const subSitemapUrl = locTag.textContent;
+                                const subCount = await this.countSitemapUrls(subSitemapUrl);
+                                totalCount += subCount;
+                            }
+                        }
+                        return totalCount;
+                    }
+
+                    // Regular sitemap with URLs
+                    const urlTags = xmlDoc.getElementsByTagName('url');
+                    return urlTags.length;
+                } catch (error) {
+                    console.warn('Could not count sitemap URLs:', error);
+                    return 0;
+                }
+            },
+
             async analyzeSitemap() {
                 const sitemapToAnalyze = this.selectedSitemap || this.sitemapUrl;
 
                 this.loading = true;
-                this.loadingMessage = '⏳ Analyse en cours - Crawling des pages du site...';
                 this.message = '';
 
                 try {
+                    // First, count the URLs in the sitemap
+                    this.loadingMessage = '📊 Comptage des pages dans le sitemap...';
+                    this.totalPagesToAnalyze = await this.countSitemapUrls(sitemapToAnalyze);
+
+                    // Update message with count
+                    if (this.totalPagesToAnalyze > 0) {
+                        this.loadingMessage = `⏳ Analyse en cours - ${this.totalPagesToAnalyze} page(s) à crawler...`;
+                    } else {
+                        this.loadingMessage = '⏳ Analyse en cours - Crawling des pages du site...';
+                    }
+
                     const token = localStorage.getItem('accessToken');
                     const response = await fetch(
                         `${API_URL}/sitemap-analysis?url=${encodeURIComponent(sitemapToAnalyze)}`,
@@ -1655,6 +1699,7 @@
                     this.loading = false;
                     this.detectingSitemap = false;
                     this.loadingMessage = '';
+                    this.totalPagesToAnalyze = 0;
                 }
             },
 
