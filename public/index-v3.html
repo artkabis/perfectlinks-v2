@@ -900,10 +900,11 @@
                                 type="button"
                                 @click="analyzeSitemap"
                                 class="btn btn-primary"
-                                :disabled="!selectedSitemap"
+                                :disabled="!selectedSitemap || loading"
                                 style="margin-top: 12px;"
                             >
-                                🔍 Analyser le sitemap sélectionné
+                                <span v-if="loading" class="loading"></span>
+                                {{ loading ? loadingMessage : '🔍 Analyser le sitemap sélectionné' }}
                             </button>
                         </div>
 
@@ -911,10 +912,10 @@
                             v-else
                             type="submit"
                             class="btn btn-primary"
-                            :disabled="detectingSitemap"
+                            :disabled="detectingSitemap || loading"
                         >
-                            <span v-if="detectingSitemap" class="loading"></span>
-                            {{ detectingSitemap ? 'Détection...' : '🔍 Détecter et analyser' }}
+                            <span v-if="detectingSitemap || loading" class="loading"></span>
+                            {{ loadingMessage || '🔍 Détecter et analyser' }}
                         </button>
                     </form>
                 </div>
@@ -1391,6 +1392,7 @@
             user: null,
             credentials: { email: '', password: '' },
             loading: false,
+            loadingMessage: '',
             message: '',
             messageType: 'error',
             sitemapUrl: '',
@@ -1575,6 +1577,7 @@
                 if (!this.sitemapUrl) return;
 
                 this.detectingSitemap = true;
+                this.loadingMessage = '🔍 Détection du sitemap...';
                 this.message = '';
 
                 try {
@@ -1593,24 +1596,29 @@
                     if (response.ok && data.sitemaps && data.sitemaps.length > 0) {
                         this.detectedSitemaps = data.sitemaps;
 
-                        // If only one sitemap, use it directly
+                        // If only one sitemap, use it directly and continue to analysis
                         if (data.sitemaps.length === 1) {
                             this.selectedSitemap = data.sitemaps[0];
-                            this.analyzeSitemap();
+                            // Don't reset detectingSitemap yet - keep loading state
+                            await this.analyzeSitemap();
                         } else {
                             // Show selection for multiple sitemaps
                             this.message = `${data.sitemaps.length} sitemaps détectés. Sélectionnez-en un.`;
                             this.messageType = 'success';
+                            this.detectingSitemap = false;
+                            this.loadingMessage = '';
                         }
                     } else {
                         this.message = 'Aucun sitemap détecté. Vérifiez l\'URL.';
                         this.messageType = 'error';
+                        this.detectingSitemap = false;
+                        this.loadingMessage = '';
                     }
                 } catch (error) {
                     this.message = 'Erreur lors de la détection du sitemap';
                     this.messageType = 'error';
-                } finally {
                     this.detectingSitemap = false;
+                    this.loadingMessage = '';
                 }
             },
 
@@ -1618,7 +1626,9 @@
                 const sitemapToAnalyze = this.selectedSitemap || this.sitemapUrl;
 
                 this.loading = true;
+                this.loadingMessage = '⏳ Analyse en cours - Crawling des pages du site...';
                 this.message = '';
+
                 try {
                     const token = localStorage.getItem('accessToken');
                     const response = await fetch(
@@ -1643,6 +1653,8 @@
                     this.messageType = 'error';
                 } finally {
                     this.loading = false;
+                    this.detectingSitemap = false;
+                    this.loadingMessage = '';
                 }
             },
 
@@ -1651,6 +1663,7 @@
                 this.sitemapUrl = '';
                 this.activeTab = 'pages';
                 this.message = '';
+                this.loadingMessage = '';
                 this.searchQuery = '';
                 this.network = null;
                 this.networkInitialized = false;
