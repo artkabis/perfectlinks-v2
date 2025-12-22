@@ -1756,7 +1756,7 @@
 
             // Start simulated progress
             startProgressSimulation() {
-                this.currentProgress = 0;
+                this.currentProgress = 1; // Start at 1 to show progress immediately
                 this.progressStartTime = Date.now();
 
                 // Estimate ~500ms per page on average
@@ -1768,7 +1768,7 @@
                     const estimatedProgress = Math.floor((elapsed / estimatedTotalTime) * this.totalPagesToAnalyze);
 
                     // Cap at 95% until real completion
-                    this.currentProgress = Math.min(Math.floor(this.totalPagesToAnalyze * 0.95), estimatedProgress);
+                    this.currentProgress = Math.max(1, Math.min(Math.floor(this.totalPagesToAnalyze * 0.95), estimatedProgress));
                 }, updateInterval);
             },
 
