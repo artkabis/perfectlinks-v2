@@ -8,18 +8,25 @@ const logger = require('../utils/logger');
  */
 const authenticate = async (req, res, next) => {
   try {
-    // Get token from Authorization header
+    let token = null;
+
+    // Get token from Authorization header or query parameter (for SSE)
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else if (req.query.token) {
+      // Allow token in query parameter for EventSource (SSE)
+      token = req.query.token;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         error: 'Authentication required',
         message: 'No bearer token provided',
       });
     }
-
-    const token = authHeader.substring(7);
 
     // Verify token
     const decoded = AuthService.verifyAccessToken(token);

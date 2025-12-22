@@ -488,6 +488,16 @@ class SitemapService {
    * @returns {Promise<Object>} Complete analysis result
    */
   static async analyzeSitemap(sitemapUrl) {
+    return this.analyzeSitemapWithProgress(sitemapUrl, null);
+  }
+
+  /**
+   * Perform complete sitemap analysis with progress updates
+   * @param {string} sitemapUrl - URL of the sitemap
+   * @param {Function} onProgress - Callback function for progress updates (current, total, currentUrl)
+   * @returns {Promise<Object>} Complete analysis result
+   */
+  static async analyzeSitemapWithProgress(sitemapUrl, onProgress = null) {
     try {
       const startTime = Date.now();
 
@@ -499,15 +509,37 @@ class SitemapService {
         throw new Error('No URLs found in sitemap');
       }
 
+      const totalUrls = allUrls.length;
+
       // Get base URL for internal link detection
       const baseUrl = new URL(allUrls[0]).origin;
 
-      // Step 2: Analyze each page for internal links
+      // Step 2: Analyze each page for internal links WITH PROGRESS
       logger.info('Step 2: Analyzing internal links...');
-      const pageAnalyses = await this.processBatch(
-        allUrls,
-        (url) => this.analyzePageLinks(url, baseUrl)
-      );
+      const pageAnalyses = [];
+      let currentProgress = 0;
+
+      // Process in batches but report progress for each URL
+      for (let i = 0; i < allUrls.length; i += MAX_CONCURRENT_REQUESTS) {
+        const batch = allUrls.slice(i, i + MAX_CONCURRENT_REQUESTS);
+
+        const batchResults = await Promise.all(
+          batch.map(async (url) => {
+            const result = await this.analyzePageLinks(url, baseUrl);
+            currentProgress++;
+
+            // Send progress update
+            if (onProgress && typeof onProgress === 'function') {
+              onProgress(currentProgress, totalUrls, url);
+            }
+
+            return result;
+          })
+        );
+
+        pageAnalyses.push(...batchResults);
+        logger.debug(`Processed batch ${Math.floor(i / MAX_CONCURRENT_REQUESTS) + 1}/${Math.ceil(allUrls.length / MAX_CONCURRENT_REQUESTS)}`);
+      }
 
       // Step 3: Extract all internal links found
       const allInternalLinks = new Set();

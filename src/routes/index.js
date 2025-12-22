@@ -114,6 +114,21 @@ router.get(
 );
 
 /**
+ * GET /api/sitemap-analysis-stream
+ * Analyze sitemap with real-time progress updates via Server-Sent Events (SSE)
+ */
+router.get(
+  '/sitemap-analysis-stream',
+  authenticate,
+  validateUrl,
+  extractCustomData,
+  checkQuota,
+  addQuotaHeaders,
+  incrementUsage,
+  asyncHandler(analysisController.analyzeSitemapStream)
+);
+
+/**
  * GET /api/analysis-history
  * Get user's analysis history
  */

@@ -1796,44 +1796,74 @@
                     // Update message with count
                     if (this.totalPagesToAnalyze > 0) {
                         this.loadingMessage = `⏳ Analyse en cours - ${this.totalPagesToAnalyze} page(s) à crawler...`;
-                        // Start progress simulation
-                        this.startProgressSimulation();
+                        this.currentProgress = 0;
                     } else {
                         this.loadingMessage = '⏳ Analyse en cours - Crawling des pages du site...';
                     }
 
                     const token = localStorage.getItem('accessToken');
-                    const response = await fetch(
-                        `${API_URL}/sitemap-analysis?url=${encodeURIComponent(sitemapToAnalyze)}`,
-                        {
-                            method: 'GET',
-                            headers: { 'Authorization': `Bearer ${token}` },
-                            credentials: 'include'
-                        }
-                    );
-                    const data = await response.json();
-                    if (response.ok) {
-                        // Complete progress immediately
-                        this.stopProgressSimulation();
 
-                        this.analysisResult = Array.isArray(data) ? data[0] : data;
-                        this.networkInitialized = false;
-                        this.detectedSitemaps = []; // Reset
-                    } else {
-                        this.message = data.message || 'Erreur lors de l\'analyse';
+                    // Use Server-Sent Events for real-time progress
+                    const eventSource = new EventSource(
+                        `${API_URL}/sitemap-analysis-stream?url=${encodeURIComponent(sitemapToAnalyze)}&token=${encodeURIComponent(token)}`
+                    );
+
+                    eventSource.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+
+                        if (data.type === 'progress') {
+                            // Update real-time progress
+                            this.currentProgress = data.current;
+                            this.totalPagesToAnalyze = data.total;
+                            this.loadingMessage = `⏳ Analyse en cours - ${data.current} / ${data.total} page(s) crawlées...`;
+                        } else if (data.type === 'complete') {
+                            // Analysis complete
+                            eventSource.close();
+                            this.currentProgress = this.totalPagesToAnalyze;
+
+                            this.analysisResult = data.data;
+                            this.networkInitialized = false;
+                            this.detectedSitemaps = []; // Reset
+
+                            this.loading = false;
+                            this.detectingSitemap = false;
+                            this.loadingMessage = '';
+                            this.totalPagesToAnalyze = 0;
+                            this.currentProgress = 0;
+                        } else if (data.type === 'error') {
+                            // Error occurred
+                            eventSource.close();
+                            this.message = data.message || 'Erreur lors de l\'analyse';
+                            this.messageType = 'error';
+
+                            this.loading = false;
+                            this.detectingSitemap = false;
+                            this.loadingMessage = '';
+                            this.totalPagesToAnalyze = 0;
+                            this.currentProgress = 0;
+                        }
+                    };
+
+                    eventSource.onerror = (error) => {
+                        eventSource.close();
+                        this.message = 'Erreur de connexion lors de l\'analyse';
                         this.messageType = 'error';
-                    }
+
+                        this.loading = false;
+                        this.detectingSitemap = false;
+                        this.loadingMessage = '';
+                        this.totalPagesToAnalyze = 0;
+                        this.currentProgress = 0;
+                    };
                 } catch (error) {
                     this.message = 'Erreur lors de l\'analyse';
                     this.messageType = 'error';
-                } finally {
-                    this.stopProgressSimulation();
+
                     this.loading = false;
                     this.detectingSitemap = false;
                     this.loadingMessage = '';
                     this.totalPagesToAnalyze = 0;
                     this.currentProgress = 0;
-                    this.progressStartTime = null;
                 }
             },
 

@@ -121,9 +121,59 @@ const getAnalysisStats = async (req, res) => {
   }
 };
 
+/**
+ * Analyze sitemap with real-time progress updates via SSE
+ * GET /api/sitemap-analysis-stream?url=sitemap_url
+ */
+const analyzeSitemapStream = async (req, res) => {
+  const { url } = req.query;
+
+  try {
+    logger.info(`Starting SSE sitemap analysis for: ${url} (user: ${req.user.email})`);
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+    // Progress callback
+    const sendProgress = (current, total, currentUrl) => {
+      res.write(`data: ${JSON.stringify({
+        type: 'progress',
+        current,
+        total,
+        currentUrl,
+        percentage: Math.round((current / total) * 100)
+      })}\n\n`);
+    };
+
+    // Perform analysis with progress updates
+    const result = await SitemapService.analyzeSitemapWithProgress(url, sendProgress);
+
+    // Send completion
+    res.write(`data: ${JSON.stringify({
+      type: 'complete',
+      data: result
+    })}\n\n`);
+
+    res.end();
+
+    logger.info(`SSE sitemap analysis completed for: ${url} (user: ${req.user.email})`);
+  } catch (error) {
+    logger.error(`SSE sitemap analysis failed for ${url}:`, error);
+    res.write(`data: ${JSON.stringify({
+      type: 'error',
+      message: error.message
+    })}\n\n`);
+    res.end();
+  }
+};
+
 module.exports = {
   detectSitemap,
   analyzeSitemap,
+  analyzeSitemapStream,
   getAnalysisHistory,
   getAnalysisStats,
 };
